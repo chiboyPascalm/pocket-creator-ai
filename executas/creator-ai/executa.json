@@ -1,0 +1,9 @@
+{
+  "slug": "creator-ai",
+  "name": "Creator AI",
+  "version": "0.1.0",
+  "executa_type": "tool",
+  "description": "Content generation tool for Pocket Creator AI",
+  "tool_id": "tool-chiboygodwinpascal-creator-ai-b6kws47a",
+  "type": "python"
+}

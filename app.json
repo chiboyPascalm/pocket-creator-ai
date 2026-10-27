@@ -1,0 +1,12 @@
+{
+  "name": "Pocket Creator AI",
+  "tagline": "Turn ideas into content worth sharing",
+  "description": "An AI-powered content creation studio that uses Anna AI to generate video scripts, stories, social posts, product promotions and captions with customizable writing tones and saved drafts.",
+  "category": "productivity",
+  "slug": "pocket-creator-ai",
+  "bundled_executas": {
+    "creator-ai": {
+      "path": "executas/creator-ai"
+    }
+  }
+}

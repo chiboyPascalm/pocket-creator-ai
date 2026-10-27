@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tool-dev-creator-ai"
+version = "0.1.0"
+description = "Executa for the creator-ai Anna App"
+requires-python = ">=3.10"
+
+[project.scripts]
+"tool-chiboygodwinpascal-creator-ai-b6kws47a" = "creator_ai_plugin:main"
+
+[tool.setuptools]
+py-modules = ["creator_ai_plugin"]

@@ -1,0 +1,43 @@
+# Anna local identity and credentials
+.anna/
+**/.anna/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.token
+secrets/
+credentials/
+
+# Python environments and caches
+.venv/
+**/.venv/
+__pycache__/
+*.py[cod]
+
+# Local logs
+*.log
+*.log.*
+
+# Backups and archives
+backups/
+*.bak
+*.backup
+*.tar
+*.tar.gz
+*.zip
+
+# Generated platform binaries
+dist/
+
+# Local development dependencies
+node_modules/
+
+# Historical backups and generated Python package metadata
+*.backup-*
+*.before-*
+*.egg-info/
+executas/*.backup-*/
