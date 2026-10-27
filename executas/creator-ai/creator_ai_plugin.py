@@ -7,11 +7,15 @@ import time
 
 WIRE_DEBUG_LOG = os.path.join(os.path.dirname(__file__), 'executa-wire-debug.log')
 def wire_log(message):
-    with open(WIRE_DEBUG_LOG, 'a', encoding='utf-8') as f:
-        f.write(time.strftime('%H:%M:%S') + ' ' + str(message) + '\n')
+    try:
+        with open(WIRE_DEBUG_LOG, 'a', encoding='utf-8') as f:
+            f.write(time.strftime('%H:%M:%S') + ' ' + str(message) + '\n')
+    except OSError:
+        # Logging must never prevent the Executa protocol from running.
+        pass
 
 MANIFEST = {
-    "name": "tool-dev-creator-ai",
+    "name": "tool-chiboygodwinpascal-creator-ai-b6kws47a",
     "display_name": "Pocket Creator AI",
     "version": "0.1.0",
     "description": "Generate original video scripts, stories, social posts, promotional copy and captions using Anna's language model.",

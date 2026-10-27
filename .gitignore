@@ -41,3 +41,4 @@ node_modules/
 *.before-*
 *.egg-info/
 executas/*.backup-*/
+dist-anna/

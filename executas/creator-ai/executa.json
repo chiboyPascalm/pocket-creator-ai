@@ -5,5 +5,40 @@
   "executa_type": "tool",
   "description": "Content generation tool for Pocket Creator AI",
   "tool_id": "tool-chiboygodwinpascal-creator-ai-b6kws47a",
-  "type": "python"
+  "type": "python",
+  "distribution": {
+    "active": "local",
+    "profiles": {
+      "local": {
+        "type": "local",
+        "supports_protocol": true
+      },
+      "binary": {
+        "type": "binary",
+        "supports_protocol": true,
+        "binary_artifacts": {
+          "darwin-arm64": {
+            "path": "dist-anna/{version}/tool-chiboygodwinpascal-creator-ai-b6kws47a-{version}-darwin-arm64.tar.gz",
+            "entrypoint": "bin/tool-chiboygodwinpascal-creator-ai-b6kws47a",
+            "format": "tar.gz"
+          },
+          "darwin-x86_64": {
+            "path": "dist-anna/{version}/tool-chiboygodwinpascal-creator-ai-b6kws47a-{version}-darwin-x86_64.tar.gz",
+            "entrypoint": "bin/tool-chiboygodwinpascal-creator-ai-b6kws47a",
+            "format": "tar.gz"
+          },
+          "linux-x86_64": {
+            "path": "dist-anna/{version}/tool-chiboygodwinpascal-creator-ai-b6kws47a-{version}-linux-x86_64.tar.gz",
+            "entrypoint": "bin/tool-chiboygodwinpascal-creator-ai-b6kws47a",
+            "format": "tar.gz"
+          },
+          "windows-x86_64": {
+            "path": "dist-anna/{version}/tool-chiboygodwinpascal-creator-ai-b6kws47a-{version}-windows-x86_64.zip",
+            "entrypoint": "bin/tool-chiboygodwinpascal-creator-ai-b6kws47a.exe",
+            "format": "zip"
+          }
+        }
+      }
+    }
+  }
 }
