@@ -17,7 +17,7 @@ def wire_log(message):
 MANIFEST = {
     "name": "tool-chiboygodwinpascal-creator-ai-b6kws47a",
     "display_name": "Pocket Creator AI",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Generate original video scripts, stories, social posts, promotional copy and captions using Anna's language model.",
     "host_capabilities": ["llm.sample"],
     "credentials": [],

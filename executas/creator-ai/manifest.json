@@ -1,0 +1,64 @@
+{
+  "name": "tool-chiboygodwinpascal-creator-ai-b6kws47a",
+  "display_name": "Pocket Creator AI",
+  "version": "0.1.1",
+  "description": "Generate original video scripts, stories, social posts, promotional copy and captions using Anna's language model.",
+  "host_capabilities": [
+    "llm.sample"
+  ],
+  "credentials": [],
+  "tools": [
+    {
+      "name": "generate",
+      "description": "Generate one polished, AI-written content draft using the topic, format, tone and optional business details.",
+      "parameters": [
+        {
+          "name": "topic",
+          "type": "string",
+          "description": "The subject or idea for the content.",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "description": "Content format.",
+          "required": true,
+          "enum": [
+            "video",
+            "story",
+            "social",
+            "promo",
+            "caption"
+          ]
+        },
+        {
+          "name": "tone",
+          "type": "string",
+          "description": "Desired writing tone, such as friendly, professional or persuasive.",
+          "required": true
+        },
+        {
+          "name": "business",
+          "type": "string",
+          "description": "Optional factual details about the business or product.",
+          "required": false,
+          "default": ""
+        },
+        {
+          "name": "variation",
+          "type": "integer",
+          "description": "Optional number to vary the creative approach.",
+          "required": false,
+          "default": 0
+        }
+      ],
+      "timeout": 120
+    },
+    {
+      "name": "ping",
+      "description": "Check whether the content tool is responding.",
+      "parameters": [],
+      "timeout": 10
+    }
+  ]
+}
