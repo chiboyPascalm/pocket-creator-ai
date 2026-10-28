@@ -3,6 +3,123 @@ import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
 const el = id => document.getElementById(id);
 let host = null, version = 0, current = "";
 
+let drafts = [];
+const HISTORY_KEY = "pocket-creator:drafts";
+const LAST_DRAFT_KEY = "pocket-creator:last-draft";
+
+try {
+  const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  if (Array.isArray(saved)) drafts = saved.filter(d =>
+    d && typeof d.content === "string" && d.content.trim()
+  ).slice(0, 50);
+} catch (e) {
+  console.warn("Browser draft history is unavailable:", e);
+}
+
+function renderSavedDrafts() {
+  const container = el("saved-drafts");
+  if (!container) return;
+  container.replaceChildren();
+
+  if (!drafts.length) {
+    const empty = document.createElement("p");
+    empty.className = "hint";
+    empty.textContent = "No saved drafts yet. Generate content to build your history.";
+    container.appendChild(empty);
+    return;
+  }
+
+  drafts.forEach((draft, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.style.display = "block";
+    button.style.width = "100%";
+    button.style.margin = "8px 0";
+    const date = draft.createdAt
+      ? new Date(draft.createdAt).toLocaleString()
+      : "Saved draft";
+    const preview = draft.content.replace(/\s+/g, " ").slice(0, 85);
+    button.textContent = `${date} · ${draft.kind || "draft"} — ${preview}`;
+    button.addEventListener("click", () => {
+      current = draft.content;
+      el("output").textContent = current;
+      if (draft.topic) el("topic").value = draft.topic;
+      if (draft.business !== undefined) el("business").value = draft.business;
+      if (draft.kind) el("kind").value = draft.kind;
+      if (draft.tone) el("tone").value = draft.tone;
+      el("status").textContent = "Saved draft reopened.";
+    });
+    container.appendChild(button);
+  });
+}
+
+async function saveDraftEntry(content, topic, business, kind, tone) {
+  const entry = {
+    id: Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8),
+    createdAt: new Date().toISOString(),
+    topic, business, kind, tone, content
+  };
+
+  drafts = [entry, ...drafts].slice(0, 50);
+  renderSavedDrafts();
+
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(drafts));
+    localStorage.setItem(LAST_DRAFT_KEY, content);
+  } catch (e) {
+    console.warn("Could not save drafts in browser storage:", e);
+  }
+
+  if (host) {
+    try {
+      await host.storage.set({key: HISTORY_KEY, value: drafts});
+      await host.storage.set({key: LAST_DRAFT_KEY, value: content});
+    } catch (e) {
+      console.warn("Anna draft storage did not save the history:", e);
+    }
+  }
+}
+
+async function restoreDraftHistory() {
+  let localDrafts = drafts.slice();
+  if (host) {
+    try {
+      const result = await host.storage.get({key: HISTORY_KEY});
+      const value = result?.value ?? result?.data?.value ?? result?.data?.data?.value;
+      if (Array.isArray(value)) {
+        drafts = [...value, ...localDrafts].filter(d =>
+          d && typeof d.content === "string" && d.content.trim()
+        );
+      }
+    } catch (e) {
+      console.warn("Could not restore Anna draft history:", e);
+    }
+  }
+
+  const seen = new Set();
+  drafts = drafts.filter(d => {
+    const key = d.id || `${d.createdAt || ""}:${d.content}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 50);
+
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(drafts));
+  } catch (e) {
+    console.warn("Could not refresh browser draft history:", e);
+  }
+  renderSavedDrafts();
+
+  if (!current && drafts.length) {
+    current = drafts[0].content;
+    el("output").textContent = current;
+    el("status").textContent = "Saved draft history restored.";
+  }
+}
+
+
 const matches = (text, re) => re.test(text);
 function hashtags(topic) {
   let tags;
@@ -64,32 +181,73 @@ function makeDraft(topic, kind, tone, n) {
 }
 
 async function generate() {
-  const topic=el("topic").value
-    .trim()
-    .replace(/^[\\s"'“”‘’]+|[\\s"'“”‘’]+$/g,"")
-    .replace(/\\s+/g," ");
-  const business=el("business").value.trim().replace(/\\s+/g," ");
-  if(!topic){el("status").textContent="Enter a topic before generating.";el("topic").focus();return;}
-  const kind=el("kind").value,tone=el("tone").value,n=version++;
-  current=""; el("output").textContent="Generating with Anna AI…"; el("status").textContent="Waiting for Anna AI to generate your content.";
-  if(host){
-    try {
-      const r=await host.tools.invoke({tool_id:(window.__ANNA_TOOL_IDS__?.["creator-ai"] || "tool-chiboygodwinpascal-creator-ai-b6kws47a"),method:"generate",args:{topic,business,kind,tone,variation:n}});
-      const content = r?.data?.data?.content ?? r?.result?.data?.data?.content ?? r?.data?.content ?? r?.result?.data?.content ?? r?.content;
-      if(typeof content==="string"&&content.trim()){
-        current=content;
-        el("output").textContent=current;
-        el("status").textContent="Content generated by the Anna tool.";
-      } else {
-        console.warn("Anna tool returned an unexpected response:",r);
-        el("status").textContent="Response not recognized: "+JSON.stringify(r).slice(0,350);
-      }
-      try { await host.storage.set({key:"pocket-creator:last-draft",value:current}); }
-      catch(storageError) { console.warn("Draft storage unavailable:",storageError); }
-    } catch(e) {
-      console.error("Anna tool invocation failed:",e);
-      current=""; el("output").textContent=""; el("status").textContent="Anna AI generation failed. Please check your connection and try again. Details: "+(e?.message||String(e));
+  const topic = el("topic").value.trim().replace(/\s+/g, " ");
+  const business = el("business").value.trim().replace(/\s+/g, " ");
+
+  if (!topic) {
+    el("status").textContent = "Enter a topic before generating.";
+    el("topic").focus();
+    return;
+  }
+
+  if (!host) {
+    current = "";
+    el("output").textContent = "Connect to Anna to generate AI content.";
+    el("status").textContent =
+      "AI generation is unavailable because the Anna host is disconnected.";
+    return;
+  }
+
+  const kind = el("kind").value;
+  const tone = el("tone").value;
+  const n = version++;
+
+  current = "";
+  el("output").textContent = "Generating with Anna AI…";
+  el("status").textContent = "Waiting for Anna AI…";
+
+  try {
+    const toolId =
+      window.__ANNA_TOOL_IDS__?.["creator-ai"] ||
+      "tool-chiboygodwinpascal-creator-ai-b6kws47a";
+
+    const r = await host.tools.invoke({
+      tool_id: toolId,
+      method: "generate",
+      args: { topic, business, kind, tone, variation: n }
+    });
+
+    const rawContent =
+      typeof r === "string" ? r :
+      r?.data?.data?.content ??
+      r?.result?.data?.data?.content ??
+      r?.data?.content ??
+      r?.result?.data?.content ??
+      r?.content ??
+      r?.result?.content ??
+      r?.text;
+
+    const content = typeof rawContent === "string" ? rawContent : "";
+
+    if (typeof content !== "string" || !content.trim()) {
+      console.error("Unexpected Anna Executa response:", r);
+      throw new Error(
+        "Anna's tool returned no usable content. Check the Executa response and Cloud Agent logs."
+      );
     }
+
+    current = content.trim();
+    el("output").textContent = current;
+    el("status").textContent = "AI content generated successfully by Anna.";
+
+    await saveDraftEntry(current, topic, business, kind, tone);
+  } catch (e) {
+    console.error("Anna AI generation failed:", e);
+    current = "";
+    el("output").textContent =
+      "AI generation failed. No template was substituted. Please try again after the connection is fixed.";
+    el("status").textContent =
+      "Anna AI error: " + (e?.message || String(e));
   }
 }
 document.querySelectorAll(".kind-choice").forEach(button=>{
@@ -112,5 +270,25 @@ el("copy").addEventListener("click",async()=>{
   try{await navigator.clipboard.writeText(current);el("status").textContent="Draft copied.";}
   catch(e){const t=document.createElement("textarea");t.value=current;document.body.appendChild(t);t.select();const ok=document.execCommand("copy");t.remove();el("status").textContent=ok?"Draft copied.":"Please select the draft and copy it manually.";}
 });
-try{host=await AnnaAppRuntime.connect();await host.window.set_title({title:"Pocket Creator AI"});await host.window.ready();el("status").textContent="Anna host connected. Ready to create.";}
-catch(e){host=null; el("status").textContent="Could not connect to Anna. AI generation is unavailable until the connection is restored.";}
+try{
+  host=await AnnaAppRuntime.connect();
+  await host.window.set_title({title:"Pocket Creator AI"});
+  await host.window.ready();
+  el("status").textContent="Anna host connected. Ready to create.";
+  await restoreDraftHistory();
+  try {
+    const saved=await host.storage.get({key:LAST_DRAFT_KEY});
+    const value=saved?.value ?? saved?.data?.value ?? saved?.data?.data?.value;
+    if(typeof value==="string"&&value.trim()&&!current){
+      current=value;
+      el("output").textContent=current;
+      el("status").textContent="Previous draft restored.";
+    }
+  } catch(storageError) {
+    console.warn("Could not restore previous draft:",storageError);
+  }
+}
+catch(e){
+  host=null;
+  el("status").textContent="Anna host is disconnected. You can still create a local draft.";
+}

@@ -130,7 +130,7 @@ def ask_anna(prompt, max_tokens=1200):
 
 def generate(args):
     topic = str(args.get("topic", "")).strip()
-    topic = re.sub(r"""^[\\s'"“”‘’]+|[\\s'"“”‘’]+$""", "", topic)
+    topic = re.sub(r"""^[\s'"“”‘’]+|[\s'"“”‘’]+$""", "", topic)
     business = str(args.get("business", "")).strip()
     if len(business) > 500:
         raise ValueError("Business details must be 500 characters or fewer.")
@@ -235,7 +235,21 @@ def main():
         wire_log('IN id=' + str(req.get('id')) + ' method=' + str(req.get('method')) + ' tool=' + str(params.get('tool')))
         try:
             method = req.get("method")
-            if method == "describe":
+            if method == "initialize":
+                params = req.get("params") or {}
+                offered = params.get("protocolVersion") or "1.1"
+                protocol = offered if offered in ("1.1", "2.0") else "2.0"
+                result = {
+                    "protocolVersion": protocol,
+                    "serverInfo": {
+                        "name": MANIFEST.get("display_name", "Pocket Creator AI"),
+                        "version": MANIFEST.get("version", "0.1.1")
+                    },
+                    "capabilities": (
+                        {"sampling": {}} if protocol == "2.0" else {}
+                    )
+                }
+            elif method == "describe":
                 result = MANIFEST
             elif method == "health":
                 result = {"status": "ready"}
@@ -250,7 +264,7 @@ def main():
                         "error": {"code": -32601, "message": str(exc)}}
         sys.stdout.write(json.dumps(response, ensure_ascii=False) + "\n")
         sys.stdout.flush()
-        wire_log('OUT id=' + str(response.get('id')) + ' has_result=' + str('result' in response) + ' has_error=' + str('error' in response))
+        wire_log('OUT id=' + str(response.get('id')) + ' has_result=' + str('result' in response) + ' has_error=' + str('error' in response) + (' error_detail=' + str(response.get('error', {}).get('message', '')) if isinstance(response.get('error'), dict) else ''))
 
 if __name__ == "__main__":
     main()

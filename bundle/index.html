@@ -43,6 +43,50 @@ footer{font-size:12px;color:var(--muted);padding:5px 2px}
 .kind-choice.selected{background:#30245e;border:2px solid #a78bfa;color:#fff}
 .kind-choice:focus-visible{outline:2px solid #c4b5fd;outline-offset:2px}
 @media(max-width:360px){.kind-choices{grid-template-columns:1fr}}
+
+.creator-credit {
+  margin: 24px 0 8px;
+  padding: 20px 16px;
+  border: 1px solid var(--border, #dedede);
+  border-radius: 16px;
+  background: var(--card, transparent);
+  text-align: center;
+}
+.creator-credit h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+.creator-name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+.creator-role {
+  margin: 5px 0 16px;
+  color: var(--muted, #777);
+  font-size: 13px;
+}
+.creator-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.creator-links a {
+  display: inline-block;
+  padding: 10px 13px;
+  border: 1px solid var(--border, #dedede);
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.creator-links a:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 3px;
+}
+
 </style>
 </head>
 <body>
@@ -106,7 +150,29 @@ footer{font-size:12px;color:var(--muted);padding:5px 2px}
 <button class="secondary" id="clear">Start fresh</button>
 </div>
 </section>
-<footer>Built for creators. Drafts are template-generated offline; review facts and personalize every draft before publishing.</footer>
+<section class="card" id="draft-history-card">
+<h3>Saved Drafts</h3>
+<p class="hint">Your recent drafts. Select one to reopen it.</p>
+<div id="saved-drafts"><p class="hint">Your saved drafts will appear here.</p></div>
+</section>
+<footer>Built for creators. Review factual claims and personalize every draft before publishing.</footer>
+
+<section class="creator-credit" aria-labelledby="creator-credit-title">
+  <h2 id="creator-credit-title">About the Creator</h2>
+  <p class="creator-name">Chiboy Godwin Pascal</p>
+  <p class="creator-role">Creator of Pocket Creator AI</p>
+  <div class="creator-links">
+    <a href="https://github.com/chiboyPascalm"
+       target="_blank" rel="noopener noreferrer">
+      <span aria-hidden="true">⌘</span> GitHub Profile
+    </a>
+    <a href="https://wa.me/2349135516263"
+       target="_blank" rel="noopener noreferrer">
+      <span aria-hidden="true">✆</span> Contact on WhatsApp
+    </a>
+  </div>
+</section>
+
 </main>
 <script src="./anna-tool-ids.js"></script>
 <script type="module" src="./app.js"></script>
