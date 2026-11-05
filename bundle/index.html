@@ -124,6 +124,7 @@ footer{font-size:12px;color:var(--muted);padding:5px 2px}
 <button type="button" class="kind-choice" data-kind="social" aria-pressed="false">📱 Social Post</button>
 <button type="button" class="kind-choice" data-kind="promo" aria-pressed="false">🛍️ Promotion</button>
 <button type="button" class="kind-choice" data-kind="caption" aria-pressed="false">✍️ Caption</button>
+<button type="button" class="kind-choice" data-kind="ebook" aria-pressed="false">📚 Ebook</button>
 </div>
 <input type="hidden" id="kind" value="video">
 </div>
@@ -133,11 +134,51 @@ footer{font-size:12px;color:var(--muted);padding:5px 2px}
 <option value="engaging">Engaging and conversational</option>
 <option value="professional">Professional</option>
 <option value="inspirational">Inspirational</option>
-<option value="funny">Funny and playful</option>
+<option value="funny">Professional Comedy 😂</option>
 </select></div>
 </div>
+
+<div class="field">
+<label>Advanced creation settings</label>
+<p class="hint">Video settings apply to video scripts. Ebook settings apply to ebooks. Audience applies to both.</p>
+</div>
+<div class="grid">
+<div class="field">
+<label for="platform">Video platform</label>
+<select id="platform">
+<option value="general">General / all platforms</option>
+<option value="youtube">YouTube</option>
+<option value="tiktok">TikTok</option>
+<option value="instagram">Instagram Reels</option>
+<option value="facebook">Facebook</option>
+</select>
+</div>
+<div class="field">
+<label for="duration">Video duration</label>
+<select id="duration">
+<option value="30 seconds">30 seconds</option>
+<option value="60 seconds" selected>60 seconds</option>
+<option value="90 seconds">90 seconds</option>
+<option value="3 minutes">3 minutes</option>
+<option value="5 minutes">5 minutes</option>
+</select>
+</div>
+<div class="field">
+<label for="audience">Target audience</label>
+<input id="audience" maxlength="160" placeholder="Example: Nigerian small business owners">
+</div>
+<div class="field">
+<label for="book-length">Ebook size</label>
+<select id="book-length">
+<option value="short">Short ebook (3–4 chapters)</option>
+<option value="standard" selected>Standard ebook (5–6 chapters)</option>
+<option value="detailed">Detailed ebook (7–8 chapters)</option>
+</select>
+</div>
+</div>
+
 <button class="primary" id="generate">Generate my content ✨</button>
-<div id="status" class="status" role="status">Ready to create. Built-in templates work offline.</div>
+<div id="status" class="status" role="status">Ready to create. AI generation uses Anna.</div>
 <p class="hint">The more specific your topic, the easier it is to personalize the result.</p>
 </section>
 

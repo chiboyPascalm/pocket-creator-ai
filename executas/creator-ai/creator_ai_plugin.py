@@ -17,14 +17,14 @@ def wire_log(message):
 MANIFEST = {
     "name": "tool-chiboygodwinpascal-creator-ai-b6kws47a",
     "display_name": "Pocket Creator AI",
-    "version": "0.1.1",
-    "description": "Generate original video scripts, stories, social posts, promotional copy and captions using Anna's language model.",
+    "version": "0.1.2",
+    "description": "Create video scripts, stories, social posts, promotions, captions and structured ebooks using Anna's language model.",
     "host_capabilities": ["llm.sample"],
     "credentials": [],
     "tools": [
         {
             "name": "generate",
-            "description": "Generate one polished, AI-written content draft using the topic, format, tone and optional business details.",
+            "description": "Generate polished AI content, including structured ebooks and advanced video scripts.",
             "parameters": [
                 {
                     "name": "topic",
@@ -37,7 +37,7 @@ MANIFEST = {
                     "type": "string",
                     "description": "Content format.",
                     "required": True,
-                    "enum": ["video", "story", "social", "promo", "caption"]
+                    "enum": ["video", "story", "social", "promo", "caption", "ebook"]
                 },
                 {
                     "name": "tone",
@@ -58,6 +58,37 @@ MANIFEST = {
                     "description": "Optional number to vary the creative approach.",
                     "required": False,
                     "default": 0
+                },
+                {
+                    "name": "platform",
+                    "type": "string",
+                    "description": "Optional target platform for video scripts.",
+                    "required": False,
+                    "default": "general",
+                    "enum": ["general", "youtube", "tiktok", "instagram", "facebook"]
+                },
+                {
+                    "name": "duration",
+                    "type": "string",
+                    "description": "Target video duration.",
+                    "required": False,
+                    "default": "60 seconds",
+                    "enum": ["30 seconds", "60 seconds", "90 seconds", "3 minutes", "5 minutes"]
+                },
+                {
+                    "name": "audience",
+                    "type": "string",
+                    "description": "Optional target audience.",
+                    "required": False,
+                    "default": ""
+                },
+                {
+                    "name": "book_length",
+                    "type": "string",
+                    "description": "Requested ebook size.",
+                    "required": False,
+                    "default": "standard",
+                    "enum": ["short", "standard", "detailed"]
                 }
             ],
             "timeout": 120
@@ -132,17 +163,61 @@ def generate(args):
     topic = str(args.get("topic", "")).strip()
     topic = re.sub(r"""^[\s'"“”‘’]+|[\s'"“”‘’]+$""", "", topic)
     business = str(args.get("business", "")).strip()
+    audience = str(args.get("audience", "")).strip()
+    platform = str(args.get("platform", "general")).strip().lower()
+    duration = str(args.get("duration", "60 seconds")).strip().lower()
+    book_length = str(args.get("book_length", "standard")).strip().lower()
+
     if len(business) > 500:
         raise ValueError("Business details must be 500 characters or fewer.")
-    kind = str(args.get("kind", "caption")).strip().lower()
-    tone = str(args.get("tone", "professional")).strip().lower()
+    if len(audience) > 160:
+        raise ValueError("Target audience must be 160 characters or fewer.")
     if not topic:
         raise ValueError("Enter a topic before generating.")
     if len(topic) > 500:
         raise ValueError("Topic must be 500 characters or fewer.")
-    if kind not in {"video", "story", "social", "promo", "caption"}:
-        kind = "caption"
-    variation = int(args.get("variation", 0) or 0)
+
+    kind = str(args.get("kind", "caption")).strip().lower()
+    tone = str(args.get("tone", "professional")).strip().lower()
+
+    tone_instructions = ""
+    if tone == "funny":
+        tone_instructions = (
+            "COMEDY STYLE: Professional Comedy. Make the audience genuinely laugh "
+            "using clever punchlines, witty observations, amusing comparisons, "
+            "relatable Nigerian humour where appropriate, and excellent comedic "
+            "timing. Make the humour natural, memorable and entertaining, while "
+            "keeping the writing polished and easy to understand. Avoid childish "
+            "jokes, forced humour, excessive slang and repetitive punchlines. "
+            "Never make up events, dates, dialogue, reactions, statistics or details "
+            "to create a joke. When discussing alleged wrongdoing or a real incident, "
+            "do not mock victims or treat unverified allegations as established facts. "
+            "Make the storytelling funny without changing the supplied facts."
+        )
+
+    allowed_kinds = {"video", "story", "social", "promo", "caption", "ebook"}
+    if kind not in allowed_kinds:
+        raise ValueError("Choose a supported content format.")
+
+    allowed_platforms = {"general", "youtube", "tiktok", "instagram", "facebook"}
+    if platform not in allowed_platforms:
+        platform = "general"
+
+    allowed_durations = {
+        "30 seconds", "60 seconds", "90 seconds",
+        "3 minutes", "5 minutes"
+    }
+    if duration not in allowed_durations:
+        duration = "60 seconds"
+
+    if book_length not in {"short", "standard", "detailed"}:
+        book_length = "standard"
+
+    try:
+        variation = int(args.get("variation", 0) or 0)
+    except (TypeError, ValueError):
+        variation = 0
+
     approaches = [
         "Use a practical, direct approach with a strong opening.",
         "Use a relatable mini-story or everyday situation.",
@@ -151,71 +226,151 @@ def generate(args):
         "Use a warm, community-focused approach."
     ]
     approach = approaches[variation % len(approaches)]
+
+    audience_text = audience if audience else "General audience appropriate to the topic"
+    business_text = business if business else "Not provided; do not invent details"
+
     rules = (
         "Write useful, original, polished content that matches the requested format. "
-        "Treat the topic and business details as the only source of factual information. "
-        "Never invent business facilities, staff, product ranges, materials, prices, "
-        "discounts, guarantees, delivery areas, customer reviews, qualifications, "
-        "availability, results, or service processes. "
-        "Do not imply a fact merely because it sounds plausible. "
-        "If a detail was not provided, omit it or invite the customer to ask the seller. "
-        "For promotions, clearly explain only supported benefits and finish with a "
-        "natural call to action. Do not claim a product or service has features "
-        "that were not specified. "
-        "For stories, provide a coherent beginning, middle, and ending. "
-        "For video, write a natural spoken script suitable for recording. "
-        "Use natural English and Nigerian context only when relevant. "
-        "Avoid generic filler, repetitive openings, and unnecessary hashtags. "
-        "Return exactly ONE finished draft per request. Never provide multiple versions, "
-        "alternative drafts, a second caption, or sections separated by ***. "
-        "A variation changes the creative angle, not the underlying facts. "
-        "Do not invent any business fact, even if it sounds normal for marketing. "
-        "Do not claim a workshop, custom tailoring, specific clothing types, "
-        "quality guarantees, current availability, delivery, or production methods "
-        "unless the supplied details explicitly confirm them. "
-        "Return only the finished content, without explaining your process."
+        "Treat the topic and supplied business details as the only source of factual "
+        "information about the user's business, product, services, experience or results. "
+        "Never invent prices, discounts, guarantees, delivery areas, reviews, qualifications, "
+        "availability, facilities, staff, product ranges or business processes. "
+        "If a detail was not supplied, omit it or clearly identify it as something the "
+        "user should fill in. Do not present invented statistics, quotations or sources "
+        "as real. Use natural English and Nigerian context only when relevant. "
+        "Avoid generic filler and repetitive openings. "
+        "Return one finished draft, not multiple alternative drafts. "
+        "A variation changes the creative angle, not the underlying facts."
     )
+
+    if kind == "video":
+        format_instructions = (
+            "Create a record-ready video script for the selected platform. "
+            "PLATFORM: " + platform + ". TARGET DURATION: " + duration + ". "
+            "Include a compelling opening hook, timestamped scenes, visual directions, "
+            "spoken narration or dialogue, on-screen text, transitions where useful, "
+            "a natural closing and a platform-appropriate call to action. "
+            "Keep the spoken script realistic for the requested duration. "
+            "Do not pad it with unnecessary repetition."
+        )
+        max_tokens = 2600
+
+    elif kind == "ebook":
+        length_instructions = {
+            "short": (
+                "Create a concise ebook manuscript with 3–4 substantive chapters. "
+                "Develop each chapter with useful explanations and practical examples."
+            ),
+            "standard": (
+                "Create a substantial ebook manuscript with 5–6 substantive chapters. "
+                "Give each chapter a clear purpose, developed explanations and practical "
+                "examples or exercises where relevant."
+            ),
+            "detailed": (
+                "Create a detailed ebook manuscript with 7–8 substantive chapters. "
+                "Develop each chapter with explanations, examples and actionable guidance."
+            )
+        }[book_length]
+
+        format_instructions = (
+            "Create a structured ebook manuscript, not a short social-media post or "
+            "a mere outline. " + length_instructions + " "
+            "Use this structure: BOOK TITLE; SUBTITLE; AUTHOR line only if supplied "
+            "(otherwise omit it); INTRODUCTION; TABLE OF CONTENTS; numbered chapters "
+            "with meaningful headings and developed prose; CONCLUSION; KEY TAKEAWAYS. "
+            "Make the chapters flow logically without repeating the same points. "
+            "Use clear, accessible language for the specified audience. "
+            "For factual, technical or educational subjects, distinguish established "
+            "facts from advice and avoid fabricated citations or statistics. "
+            "Do not invent the user's qualifications or personal experiences. "
+            "If the subject is broad, establish a coherent scope and stay within it. "
+            "The result should be a useful first manuscript that can be edited and "
+            "expanded before publication."
+        )
+        max_tokens = 4500 if book_length == "detailed" else 3500
+
+    elif kind == "story":
+        format_instructions = (
+            "Write a complete story with a compelling opening, coherent beginning, "
+            "middle and ending, believable characters and a satisfying resolution."
+        )
+        max_tokens = 1800
+
+    elif kind == "promo":
+        format_instructions = (
+            "Write persuasive but honest promotional copy. Explain only supported "
+            "benefits and finish with a natural call to action."
+        )
+        max_tokens = 1600
+
+    elif kind == "social":
+        format_instructions = (
+            "Write an engaging social-media post with a strong opening, useful message "
+            "and natural audience engagement. Include hashtags only where appropriate."
+        )
+        max_tokens = 1200
+
+    else:
+        format_instructions = (
+            "Write one concise, polished caption suitable for the topic and audience."
+        )
+        max_tokens = 1000
+
     prompt = (
         "You are Pocket Creator AI, an expert content writer. "
         "CONTENT TYPE: " + kind + ". "
         "TONE: " + tone + ". "
+        + tone_instructions + " "
         "TOPIC: " + topic + ". "
-        "BUSINESS OR PRODUCT DETAILS: "
-        + (business if business else "Not provided; do not invent details")
-        + ". "
+        "TARGET AUDIENCE: " + audience_text + ". "
+        "BUSINESS OR PRODUCT DETAILS: " + business_text + ". "
         "CREATIVE DIRECTION: " + approach + " "
         "VARIATION NUMBER: " + str(variation + 1) + ". "
-        + rules
+        + format_instructions + " "
+        + rules + " "
+        "Return only the finished content, without explaining your process."
     )
-    content = ask_anna(prompt)
 
-    # Second pass: audit the draft against the supplied facts.
+    content = ask_anna(prompt, max_tokens=max_tokens)
+
     review_prompt = (
-        "You are the factual editor for Pocket Creator AI. Rewrite the draft below "
-        "as ONE polished, publish-ready piece of content.\n\n"
+        "You are the factual editor for Pocket Creator AI. Review and improve the "
+        "following draft while preserving its intended format and useful detail.\n\n"
         "CONTENT TYPE: " + kind + "\n"
-        "TONE: " + tone + "\n"
-        "TOPIC (the user's words, not proof of extra facts): " + topic + "\n"
-        "ONLY SUPPLIED BUSINESS DETAILS: "
-        + (business if business else "None supplied") + "\n\n"
+        "TOPIC: " + topic + "\n"
+        "TARGET AUDIENCE: " + audience_text + "\n"
+        "REQUESTED TONE: " + tone + "\n"
+        "COMEDY REQUIREMENTS: If the requested tone is funny, preserve genuinely "
+        "amusing, polished humour, clever punchlines and natural comedic timing. "
+        "Do not remove the humour merely to make the writing formal. However, never "
+        "retain or introduce an unsupported factual detail for the sake of a joke.\n"
+        "ONLY SUPPLIED BUSINESS DETAILS: " + business_text + "\n\n"
         "DRAFT TO REVIEW:\n" + content + "\n\n"
         "STRICT RULES:\n"
-        "1. Treat the topic and supplied business details as the only factual source.\n"
-        "2. Remove or rewrite every unsupported factual claim, including implied claims.\n"
-        "3. Do not invent products, clothing styles, workshops, staff, custom services, "
-        "materials, quality claims, prices, offers, delivery, availability, reviews, "
-        "customer experiences, or business processes.\n"
-        "4. Keep only details explicitly supplied by the user. If a detail is unknown, "
-        "omit it or invite the reader to ask.\n"
-        "5. Keep the writing natural, useful, engaging, and appropriate for the content type.\n"
-        "6. Return exactly ONE final draft. No alternatives, no explanations, no headings "
-        "such as Draft 1 or Draft 2, and no *** separators.\n"
-        "Return only the revised content."
+        "1. Remove unsupported factual claims and fabricated statistics or sources.\n"
+        "2. Do not invent business details, personal experiences, qualifications, "
+        "prices, offers, reviews or guarantees.\n"
+        "3. Preserve the requested structure and all useful supported information.\n"
+        "4. For ebooks, retain the title, contents, introduction, developed chapters, "
+        "conclusion and takeaways. Do not reduce the manuscript to a brief outline.\n"
+        "5. For video scripts, preserve the platform, timing, scenes and recording directions.\n"
+        "6. Keep the language natural, clear and appropriate for the audience.\n"
+        "7. Return one revised draft only, without discussing the review process."
     )
-    content = ask_anna(review_prompt)
+
+    content = ask_anna(review_prompt, max_tokens=max_tokens)
     return {"success": True, "data": {
-        "content": content, "topic": topic, "business": business, "kind": kind,
-        "tone": tone, "provider": "anna-llm"
+        "content": content,
+        "topic": topic,
+        "business": business,
+        "kind": kind,
+        "tone": tone,
+        "audience": audience,
+        "platform": platform,
+        "duration": duration,
+        "book_length": book_length,
+        "provider": "anna-llm"
     }}
 
 

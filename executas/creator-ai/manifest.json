@@ -1,8 +1,8 @@
 {
   "name": "tool-chiboygodwinpascal-creator-ai-b6kws47a",
   "display_name": "Pocket Creator AI",
-  "version": "0.1.1",
-  "description": "Generate original video scripts, stories, social posts, promotional copy and captions using Anna's language model.",
+  "version": "0.1.2",
+  "description": "Create video scripts, stories, social posts, promotions, captions and structured ebooks using Anna's language model.",
   "host_capabilities": [
     "llm.sample"
   ],
@@ -10,7 +10,7 @@
   "tools": [
     {
       "name": "generate",
-      "description": "Generate one polished, AI-written content draft using the topic, format, tone and optional business details.",
+      "description": "Generate polished AI content, including structured ebooks and advanced video scripts.",
       "parameters": [
         {
           "name": "topic",
@@ -28,7 +28,8 @@
             "story",
             "social",
             "promo",
-            "caption"
+            "caption",
+            "ebook"
           ]
         },
         {
@@ -50,6 +51,53 @@
           "description": "Optional number to vary the creative approach.",
           "required": false,
           "default": 0
+        },
+        {
+          "name": "platform",
+          "type": "string",
+          "description": "Optional target platform for video scripts.",
+          "required": false,
+          "default": "general",
+          "enum": [
+            "general",
+            "youtube",
+            "tiktok",
+            "instagram",
+            "facebook"
+          ]
+        },
+        {
+          "name": "duration",
+          "type": "string",
+          "description": "Target video duration.",
+          "required": false,
+          "default": "60 seconds",
+          "enum": [
+            "30 seconds",
+            "60 seconds",
+            "90 seconds",
+            "3 minutes",
+            "5 minutes"
+          ]
+        },
+        {
+          "name": "audience",
+          "type": "string",
+          "description": "Optional target audience.",
+          "required": false,
+          "default": ""
+        },
+        {
+          "name": "book_length",
+          "type": "string",
+          "description": "Requested ebook size.",
+          "required": false,
+          "default": "standard",
+          "enum": [
+            "short",
+            "standard",
+            "detailed"
+          ]
         }
       ],
       "timeout": 120

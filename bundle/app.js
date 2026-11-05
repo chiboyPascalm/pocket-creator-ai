@@ -46,19 +46,35 @@ function renderSavedDrafts() {
       el("output").textContent = current;
       if (draft.topic) el("topic").value = draft.topic;
       if (draft.business !== undefined) el("business").value = draft.business;
-      if (draft.kind) el("kind").value = draft.kind;
+      if (draft.kind) {
+        el("kind").value = draft.kind;
+        document.querySelectorAll(".kind-choice").forEach(button => {
+          const selected = button.dataset.kind === draft.kind;
+          button.classList.toggle("selected", selected);
+          button.setAttribute("aria-pressed", String(selected));
+        });
+      }
       if (draft.tone) el("tone").value = draft.tone;
+      if (draft.platform) el("platform").value = draft.platform;
+      if (draft.duration) el("duration").value = draft.duration;
+      if (draft.audience !== undefined) el("audience").value = draft.audience;
+      if (draft.book_length) el("book-length").value = draft.book_length;
       el("status").textContent = "Saved draft reopened.";
     });
     container.appendChild(button);
   });
 }
 
-async function saveDraftEntry(content, topic, business, kind, tone) {
+async function saveDraftEntry(content, topic, business, kind, tone, settings = {}) {
   const entry = {
     id: Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8),
     createdAt: new Date().toISOString(),
-    topic, business, kind, tone, content
+    topic, business, kind, tone,
+    platform: settings.platform || "general",
+    duration: settings.duration || "60 seconds",
+    audience: settings.audience || "",
+    book_length: settings.book_length || "standard",
+    content
   };
 
   drafts = [entry, ...drafts].slice(0, 50);
@@ -214,7 +230,13 @@ async function generate() {
     const r = await host.tools.invoke({
       tool_id: toolId,
       method: "generate",
-      args: { topic, business, kind, tone, variation: n }
+      args: {
+        topic, business, kind, tone, variation: n,
+        platform: el("platform").value,
+        duration: el("duration").value,
+        audience: el("audience").value.trim(),
+        book_length: el("book-length").value
+      }
     });
 
     const rawContent =
@@ -240,7 +262,12 @@ async function generate() {
     el("output").textContent = current;
     el("status").textContent = "AI content generated successfully by Anna.";
 
-    await saveDraftEntry(current, topic, business, kind, tone);
+    await saveDraftEntry(current, topic, business, kind, tone, {
+      platform: el("platform").value,
+      duration: el("duration").value,
+      audience: el("audience").value.trim(),
+      book_length: el("book-length").value
+    });
   } catch (e) {
     console.error("Anna AI generation failed:", e);
     current = "";
