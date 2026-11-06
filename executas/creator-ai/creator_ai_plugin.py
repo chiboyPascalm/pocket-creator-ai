@@ -115,6 +115,84 @@ def hashtags(topic):
         tags = ["#YourStory", "#CreativeIdeas", "#LifeLessons"]
     return " ".join((tags + ["#ContentCreator", "#PocketCreatorAI"])[:6])
 
+
+HASHTAG_POLICIES = {
+    "tiktok": (3, 5),
+    "youtube": (3, 5),
+    "instagram": (5, 8),
+    "facebook": (3, 5),
+    "general": (3, 5),
+}
+
+
+def normalize_hashtags(value, maximum=8):
+    """Extract hashtags, remove duplicates, preserve order and original spelling."""
+    found = re.findall(r"(?<!\w)#[\w]+", str(value or ""), flags=re.UNICODE)
+    result = []
+    seen = set()
+    for tag in found:
+        key = tag.casefold()
+        if key not in seen:
+            seen.add(key)
+            result.append(tag)
+        if len(result) >= maximum:
+            break
+    return result
+
+
+def enforce_hashtag_section(content, kind, platform, topic, audience, business):
+    """Ensure video and promotional drafts end with a valid platform-specific section."""
+    if kind not in {"video", "promo"}:
+        return content
+
+    minimum, maximum = HASHTAG_POLICIES.get(platform, HASHTAG_POLICIES["general"])
+    headings = list(re.finditer(
+        r"(?im)^[ \t]*hashtags?[ \t]*:?[ \t]*$",
+        content
+    ))
+
+    existing = []
+    if headings:
+        existing = normalize_hashtags(content[headings[-1].end():], maximum)
+
+    if minimum <= len(existing) <= maximum:
+        return (
+            content[:headings[-1].start()].rstrip()
+            + "\n\nHashtags:\n"
+            + " ".join(existing)
+        )
+
+    count_rule = (
+        f"Return exactly {minimum} to {maximum} unique hashtags."
+        if minimum == maximum
+        else f"Return between {minimum} and {maximum} unique hashtags."
+    )
+    repair_prompt = (
+        "Create only a final hashtag section for this content. "
+        "Return hashtags only, with no explanation, heading or other prose.\n"
+        f"CONTENT TYPE: {kind}\n"
+        f"TOPIC: {topic}\n"
+        f"TARGET AUDIENCE: {audience or 'General audience appropriate to the topic'}\n"
+        f"SUPPLIED BUSINESS OR PRODUCT DETAILS: {business or 'Not provided'}\n"
+        f"PLATFORM: {platform}\n"
+        f"{count_rule}\n"
+        "Use specific, accurate hashtags based on the actual topic, product or "
+        "service and audience. Do not claim that any hashtag is trending. "
+        "Do not add #Shorts, #Reels or #FacebookReels unless that exact format "
+        "was explicitly requested. Do not invent a product, service or audience."
+    )
+
+    repaired = normalize_hashtags(ask_anna(repair_prompt, max_tokens=220), maximum)
+    if not minimum <= len(repaired) <= maximum:
+        raise RuntimeError(
+            f"Anna did not return a valid hashtag set for {platform}. "
+            "Please try generating again."
+        )
+
+    base = content[:headings[-1].start()].rstrip() if headings else content.rstrip()
+    return base + "\n\nHashtags:\n" + " ".join(repaired)
+
+
 def ask_anna(prompt, max_tokens=1200):
     import json, sys, time
     rid = 700000 + int(time.time() * 1000) % 100000
@@ -327,8 +405,15 @@ def generate(args):
 
     elif kind == "promo":
         format_instructions = (
-            "Write persuasive but honest promotional copy. Explain only supported "
-            "benefits and finish with a natural call to action."
+            "Write persuasive but honest promotional copy for the selected platform. "
+            "PLATFORM: " + platform + ". Explain only supported benefits and finish "
+            "with a natural call to action. At the very end, add a separate section "
+            "labelled 'Hashtags:' containing platform-appropriate hashtags based on "
+            "the actual product, service, topic and target audience. "
+            + video_hashtag_rules + " "
+            "Do not put hashtags inside the promotional copy or invent trending claims. "
+            "Do not add video-format tags such as #Shorts, #Reels or #FacebookReels "
+            "unless that exact format was explicitly requested."
         )
         max_tokens = 1600
 
@@ -383,14 +468,19 @@ def generate(args):
         "4. For ebooks, retain the title, contents, introduction, developed chapters, "
         "conclusion and takeaways. Do not reduce the manuscript to a brief outline.\n"
         "5. For video scripts, preserve the platform, timing, scenes and recording directions.\n"
-        "6. For video scripts, retain a separate final 'Hashtags:' section. Keep the "
-        "hashtags relevant to the topic, audience and selected platform. "
-        + (video_hashtag_rules if kind == "video" else "") + "\n"
+        "6. For video scripts and promotions, retain a separate final "
+        "'Hashtags:' section. Keep hashtags relevant to the topic, audience "
+        "and selected platform. "
+        + (video_hashtag_rules if kind in {"video", "promo"} else "") + "\n"
         "7. Keep the language natural, clear and appropriate for the audience.\n"
         "8. Return one revised draft only, without discussing the review process."
     )
 
     content = ask_anna(review_prompt, max_tokens=max_tokens)
+    if kind in {"video", "promo"}:
+        content = enforce_hashtag_section(
+            content, kind, platform, topic, audience, business
+        )
     return {"success": True, "data": {
         "content": content,
         "topic": topic,

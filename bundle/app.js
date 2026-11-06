@@ -187,9 +187,9 @@ function makePdf(title, content) {
       "42 59 m 553 59 l S",
       "Q",
 
-      // Creator details in one horizontal line.
+      // Bold creator details in one horizontal line.
       "BT",
-      "/F1 5.2 Tf",
+      "/F2 5.2 Tf",
       "0.20 0.22 0.31 rg",
       "50 31 Td",
       `<${hexText(footer)}> Tj`,
@@ -682,11 +682,13 @@ async function generate() {
 }
 function updateFormatSettings(kind) {
   const isVideo = kind === "video";
+  const isPromo = kind === "promo";
   const isEbook = kind === "ebook";
-  const showAdvanced = isVideo || isEbook;
+  const usesPlatform = isVideo || isPromo;
+  const showAdvanced = usesPlatform || isEbook;
 
   el("advanced-settings-header").hidden = !showAdvanced;
-  el("video-platform-setting").hidden = !isVideo;
+  el("video-platform-setting").hidden = !usesPlatform;
   el("video-duration-setting").hidden = !isVideo;
   el("ebook-size-setting").hidden = !isEbook;
   el("audience-setting").hidden = !showAdvanced;
