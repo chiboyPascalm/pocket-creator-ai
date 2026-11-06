@@ -16,6 +16,125 @@ try {
   console.warn("Browser draft history is unavailable:", e);
 }
 
+
+function pdfByte(char) {
+  const special = {
+    "€": 128, "‚": 130, "ƒ": 131, "„": 132, "…": 133,
+    "†": 134, "‡": 135, "ˆ": 136, "‰": 137, "Š": 138,
+    "‹": 139, "Œ": 140, "Ž": 142, "‘": 145, "’": 146,
+    "“": 147, "”": 148, "•": 149, "–": 150, "—": 151,
+    "˜": 152, "™": 153, "š": 154, "›": 155, "œ": 156,
+    "ž": 158, "Ÿ": 159
+  };
+  const code = special[char] ?? char.codePointAt(0);
+  return code >= 32 && code <= 255 ? code : 63;
+}
+
+function makePdf(title, content) {
+  const clean = String(content)
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "");
+
+  const lines = [];
+  const wrap = (value, width = 88) => {
+    if (!value) {
+      lines.push("");
+      return;
+    }
+    let remaining = value;
+    while (remaining.length > width) {
+      let cut = remaining.lastIndexOf(" ", width);
+      if (cut < 1) cut = width;
+      lines.push(remaining.slice(0, cut));
+      remaining = remaining.slice(cut).trimStart();
+    }
+    if (remaining) lines.push(remaining);
+  };
+
+  wrap(title.toUpperCase(), 75);
+  lines.push("");
+  wrap("Created with Pocket Creator AI");
+  lines.push("");
+  clean.split("\n").forEach(line => wrap(line));
+
+  const pageSize = 52;
+  const pages = [];
+  for (let i = 0; i < lines.length; i += pageSize) {
+    pages.push(lines.slice(i, i + pageSize));
+  }
+  if (!pages.length) pages.push([]);
+
+  const objects = [];
+  objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  objects[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+
+  const pageRefs = [];
+  pages.forEach((page, index) => {
+    const pageId = 4 + index * 2;
+    const streamId = pageId + 1;
+    pageRefs.push(`${pageId} 0 R`);
+
+    let stream = "BT\n/F1 10 Tf\n50 790 Td\n14 TL\n";
+    page.forEach(line => {
+      const hex = Array.from(line, ch =>
+        pdfByte(ch).toString(16).padStart(2, "0")
+      ).join("").toUpperCase();
+      stream += `<${hex}> Tj\nT*\n`;
+    });
+    stream += `\n/F1 8 Tf\n50 30 Td\n<5061676520${(index + 1).toString(16).toUpperCase()}0F${pages.length.toString(16).toUpperCase()}> Tj\nET`;
+
+    objects[pageId] =
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents ${streamId} 0 R >>`;
+    objects[streamId] =
+      `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+  });
+
+  objects[2] = `<< /Type /Pages /Kids [${pageRefs.join(" ")}] /Count ${pages.length} >>`;
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  for (let i = 1; i < objects.length; i++) {
+    offsets[i] = pdf.length;
+    pdf += `${i} 0 obj\n${objects[i]}\nendobj\n`;
+  }
+
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+  for (let i = 1; i < objects.length; i++) {
+    pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return new Blob([pdf], {type: "application/pdf"});
+}
+
+function downloadPdf(title, content) {
+  if (!content || !content.trim()) {
+    el("status").textContent = "There is no draft content to download.";
+    return;
+  }
+  try {
+    const blob = makePdf(title || "Pocket Creator AI Draft", content);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const filename = (title || "pocket-creator-draft")
+      .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    link.href = url;
+    link.download = `${filename || "pocket-creator-draft"}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    el("status").textContent = "PDF download prepared.";
+  } catch (e) {
+    console.error("PDF export failed:", e);
+    el("status").textContent = "PDF export failed: " + (e.message || String(e));
+  }
+}
+
+function draftStorageId(draft) {
+  return draft.id || `${draft.createdAt || ""}:${draft.content}`;
+}
+
 function renderSavedDrafts() {
   const container = el("saved-drafts");
   if (!container) return;
@@ -29,25 +148,26 @@ function renderSavedDrafts() {
     return;
   }
 
-  drafts.forEach((draft, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "secondary";
-    button.style.display = "block";
-    button.style.width = "100%";
-    button.style.margin = "8px 0";
+  drafts.forEach(draft => {
+    const item = document.createElement("div");
+    item.className = "draft-entry";
+
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "secondary draft-open";
     const date = draft.createdAt
       ? new Date(draft.createdAt).toLocaleString()
       : "Saved draft";
     const preview = draft.content.replace(/\s+/g, " ").slice(0, 85);
-    button.textContent = `${date} · ${draft.kind || "draft"} — ${preview}`;
-    button.addEventListener("click", () => {
+    open.textContent = `${date} · ${draft.kind || "draft"} — ${preview}`;
+    open.addEventListener("click", () => {
       current = draft.content;
       el("output").textContent = current;
       if (draft.topic) el("topic").value = draft.topic;
       if (draft.business !== undefined) el("business").value = draft.business;
       if (draft.kind) {
         el("kind").value = draft.kind;
+        updateFormatSettings(draft.kind);
         document.querySelectorAll(".kind-choice").forEach(button => {
           const selected = button.dataset.kind === draft.kind;
           button.classList.toggle("selected", selected);
@@ -61,8 +181,63 @@ function renderSavedDrafts() {
       if (draft.book_length) el("book-length").value = draft.book_length;
       el("status").textContent = "Saved draft reopened.";
     });
-    container.appendChild(button);
+
+    const actions = document.createElement("div");
+    actions.className = "draft-entry-actions";
+
+    const pdf = document.createElement("button");
+    pdf.type = "button";
+    pdf.className = "secondary";
+    pdf.textContent = "Download PDF";
+    pdf.addEventListener("click", () =>
+      downloadPdf(draft.topic || draft.kind || "Pocket Creator Draft", draft.content)
+    );
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "secondary draft-delete";
+    remove.textContent = "Delete";
+    remove.addEventListener("click", () => deleteSavedDraft(draftStorageId(draft)));
+
+    actions.append(pdf, remove);
+    item.append(open, actions);
+    container.appendChild(item);
   });
+}
+
+async function deleteSavedDraft(id) {
+  const draft = drafts.find(item => draftStorageId(item) === id);
+  if (!draft) return;
+  if (!window.confirm("Delete this saved draft? This cannot be undone.")) return;
+
+  const removedCurrentDraft = current === draft.content;
+  drafts = drafts.filter(item => draftStorageId(item) !== id);
+  renderSavedDrafts();
+
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(drafts));
+    if (removedCurrentDraft) {
+      current = "";
+      el("output").textContent = "Your content will appear here after you generate a draft.";
+      localStorage.setItem(LAST_DRAFT_KEY, "");
+    }
+  } catch (e) {
+    console.warn("Could not update browser draft storage:", e);
+  }
+
+  if (host) {
+    try {
+      await host.storage.set({key: HISTORY_KEY, value: drafts});
+      if (removedCurrentDraft) {
+        await host.storage.set({key: LAST_DRAFT_KEY, value: ""});
+      }
+    } catch (e) {
+      console.warn("Could not synchronize deleted draft with Anna storage:", e);
+      el("status").textContent = "Draft removed here, but Anna storage could not be synchronized.";
+      return;
+    }
+  }
+  el("status").textContent = "Saved draft deleted.";
 }
 
 async function saveDraftEntry(content, topic, business, kind, tone, settings = {}) {
@@ -277,10 +452,23 @@ async function generate() {
       "Anna AI error: " + (e?.message || String(e));
   }
 }
+function updateFormatSettings(kind) {
+  const isVideo = kind === "video";
+  const isEbook = kind === "ebook";
+  const showAdvanced = isVideo || isEbook;
+
+  el("advanced-settings-header").hidden = !showAdvanced;
+  el("video-platform-setting").hidden = !isVideo;
+  el("video-duration-setting").hidden = !isVideo;
+  el("ebook-size-setting").hidden = !isEbook;
+  el("audience-setting").hidden = !showAdvanced;
+}
+
 document.querySelectorAll(".kind-choice").forEach(button=>{
   button.addEventListener("click",()=>{
     const kind=button.dataset.kind;
     el("kind").value=kind;
+    updateFormatSettings(kind);
     document.querySelectorAll(".kind-choice").forEach(choice=>{
       const selected=choice===button;
       choice.classList.toggle("selected",selected);
@@ -292,6 +480,7 @@ document.querySelectorAll(".kind-choice").forEach(button=>{
 el("generate").addEventListener("click",generate);
 el("again").addEventListener("click",generate);
 el("clear").addEventListener("click",()=>{el("topic").value="";el("business").value="";current="";el("output").textContent="Your next draft will appear here.";el("status").textContent="Ready for a new idea.";el("topic").focus();});
+el("download-current").addEventListener("click",()=>downloadPdf(el("topic").value.trim() || el("kind").value || "Pocket Creator Draft",current));
 el("copy").addEventListener("click",async()=>{
   if(!current){el("status").textContent="Generate a draft first.";return;}
   try{await navigator.clipboard.writeText(current);el("status").textContent="Draft copied.";}
