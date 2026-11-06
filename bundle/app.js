@@ -31,9 +31,16 @@ function pdfByte(char) {
 }
 
 function makePdf(title, content) {
+  const PDF_LOGO_BASE64 = "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";
+  const logoBinary = atob(PDF_LOGO_BASE64);
+
   const clean = String(content)
     .replace(/\r\n?/g, "\n")
     .replace(/[\u200B-\u200D\uFEFF]/g, "");
+
+  const hexText = value => Array.from(String(value), ch =>
+    pdfByte(ch).toString(16).padStart(2, "0")
+  ).join("").toUpperCase();
 
   const lines = [];
   const wrap = (value, width = 88) => {
@@ -53,46 +60,160 @@ function makePdf(title, content) {
 
   wrap(title.toUpperCase(), 75);
   lines.push("");
-  wrap("Created with Pocket Creator AI");
-  lines.push("");
   clean.split("\n").forEach(line => wrap(line));
 
-  const pageSize = 52;
+  const pageSize = 40;
   const pages = [];
   for (let i = 0; i < lines.length; i += pageSize) {
     pages.push(lines.slice(i, i + pageSize));
   }
   if (!pages.length) pages.push([]);
 
+  const footer =
+    "Chiboy Godwin Pascal | github.com/chiboyPascalm | " +
+    "youtube.com/@chiboygodwinpascal | wa.me/2349135516263";
+
   const objects = [];
   objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
-  objects[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+  objects[3] =
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+  objects[4] =
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
+
+  // Embed the actual Pocket Creator AI colour logo as a JPEG image.
+  objects[5] =
+    `<< /Type /XObject /Subtype /Image /Width 128 /Height 128 ` +
+    `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode ` +
+    `/Length ${logoBinary.length} >>\nstream\n${logoBinary}\nendstream`;
 
   const pageRefs = [];
+
   pages.forEach((page, index) => {
-    const pageId = 4 + index * 2;
+    const pageId = 6 + index * 2;
     const streamId = pageId + 1;
     pageRefs.push(`${pageId} 0 R`);
 
-    let stream = "BT\n/F1 10 Tf\n50 790 Td\n14 TL\n";
+    let stream = [
+      // Full-width navy brand header.
+      "q",
+      "0.063 0.078 0.149 rg",
+      "0 758 595 84 re f",
+      "Q",
+
+      // Purple and teal brand accents.
+      "q",
+      "0.427 0.365 0.984 rg",
+      "0 758 8 84 re f",
+      "0.098 0.722 0.651 rg",
+      "8 758 4 84 re f",
+      "Q",
+
+      // Real Pocket Creator AI logo.
+      "q",
+      "42 778 44 44 cm",
+      "/Im1 Do",
+      "Q",
+
+      // White brand title and tagline.
+      "BT",
+      "/F2 19 Tf",
+      "1 1 1 rg",
+      "98 803 Td",
+      `<${hexText("Pocket Creator AI")}> Tj`,
+      "/F1 8 Tf",
+      "0.78 0.82 0.91 rg",
+      "0 -17 Td",
+      `<${hexText("Create. Write. Publish.")}> Tj`,
+      "ET",
+
+      // Purple and teal divider below header.
+      "q",
+      "0.427 0.365 0.984 rg",
+      "12 755 400 3 re f",
+      "0.098 0.722 0.651 rg",
+      "412 755 171 3 re f",
+      "Q"
+    ].join("\n") + "\n";
+
+    // Main content: purple section headings, readable dark body text.
+    let y = 735;
     page.forEach(line => {
-      const hex = Array.from(line, ch =>
-        pdfByte(ch).toString(16).padStart(2, "0")
-      ).join("").toUpperCase();
-      stream += `<${hex}> Tj\nT*\n`;
+      if (!line.trim()) {
+        y -= 8;
+        return;
+      }
+
+      const isHeading =
+        /^#{1,6}\s/.test(line) ||
+        (line.length < 70 && /:$/.test(line));
+
+      const displayLine = line
+        .replace(/^#{1,6}\s*/, "")
+        .replace(/\*\*/g, "");
+
+      if (isHeading) {
+        stream += [
+          "BT",
+          "/F2 11 Tf",
+          "0.427 0.365 0.984 rg",
+          `50 ${y} Td`,
+          `<${hexText(displayLine)}> Tj`,
+          "ET"
+        ].join("\n") + "\n";
+        y -= 16;
+      } else {
+        stream += [
+          "BT",
+          "/F1 10 Tf",
+          "0.12 0.13 0.17 rg",
+          `50 ${y} Td`,
+          `<${hexText(displayLine)}> Tj`,
+          "ET"
+        ].join("\n") + "\n";
+        y -= 12;
+      }
     });
-    stream += `\n/F1 8 Tf\n50 30 Td\n<5061676520${(index + 1).toString(16).toUpperCase()}0F${pages.length.toString(16).toUpperCase()}> Tj\nET`;
+
+    // Light branded footer band on every page.
+    stream += [
+      "q",
+      "0.96 0.95 0.99 rg",
+      "0 0 595 62 re f",
+      "Q",
+      "q",
+      "0.427 0.365 0.984 RG",
+      "42 62 m 553 62 l S",
+      "0.098 0.722 0.651 RG",
+      "42 59 m 553 59 l S",
+      "Q",
+
+      // Creator details in one horizontal line.
+      "BT",
+      "/F1 5.2 Tf",
+      "0.20 0.22 0.31 rg",
+      "50 31 Td",
+      `<${hexText(footer)}> Tj`,
+      "/F2 7 Tf",
+      "485 0 Td",
+      `<${hexText(`Page ${index + 1} of ${pages.length}`)}> Tj`,
+      "ET"
+    ].join("\n");
 
     objects[pageId] =
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents ${streamId} 0 R >>`;
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] ` +
+      `/Resources << /Font << /F1 3 0 R /F2 4 0 R >> ` +
+      `/XObject << /Im1 5 0 R >> >> /Contents ${streamId} 0 R >>`;
+
     objects[streamId] =
       `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
   });
 
-  objects[2] = `<< /Type /Pages /Kids [${pageRefs.join(" ")}] /Count ${pages.length} >>`;
+  objects[2] =
+    `<< /Type /Pages /Kids [${pageRefs.join(" ")}] /Count ${pages.length} >>`;
 
   let pdf = "%PDF-1.4\n";
   const offsets = [0];
+
   for (let i = 1; i < objects.length; i++) {
     offsets[i] = pdf.length;
     pdf += `${i} 0 obj\n${objects[i]}\nendobj\n`;
@@ -100,13 +221,19 @@ function makePdf(title, content) {
 
   const xref = pdf.length;
   pdf += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+
   for (let i = 1; i < objects.length; i++) {
     pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
   }
-  pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-  return new Blob([pdf], {type: "application/pdf"});
-}
 
+  pdf +=
+    `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\n` +
+    `startxref\n${xref}\n%%EOF`;
+
+  // Preserve JPEG bytes exactly; do not UTF-8 encode the PDF binary stream.
+  const pdfBytes = Uint8Array.from(pdf, ch => ch.charCodeAt(0));
+  return new Blob([pdfBytes], {type: "application/pdf"});
+}
 function downloadPdf(title, content) {
   if (!content || !content.trim()) {
     el("status").textContent = "There is no draft content to download.";
@@ -205,14 +332,78 @@ function renderSavedDrafts() {
   });
 }
 
+function confirmDraftDeletion() {
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.setAttribute("role", "presentation");
+    overlay.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:20px;";
+
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.setAttribute("aria-labelledby", "draft-delete-title");
+    dialog.style.cssText = "width:100%;max-width:360px;background:#151d2b;color:#fff;border:1px solid #39465a;border-radius:16px;padding:22px;box-shadow:0 18px 55px rgba(0,0,0,.45);";
+
+    const title = document.createElement("h3");
+    title.id = "draft-delete-title";
+    title.textContent = "Delete saved draft?";
+    title.style.cssText = "margin:0 0 10px;font-size:18px;";
+
+    const message = document.createElement("p");
+    message.textContent = "This draft will be removed from your saved drafts. This action cannot be undone.";
+    message.style.cssText = "margin:0 0 20px;line-height:1.5;color:#c5cedb;";
+
+    const actions = document.createElement("div");
+    actions.style.cssText = "display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;";
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = "Cancel";
+    cancel.style.cssText = "padding:10px 16px;border-radius:9px;border:1px solid #657187;background:#263246;color:#fff;";
+
+    const confirm = document.createElement("button");
+    confirm.type = "button";
+    confirm.textContent = "Delete draft";
+    confirm.style.cssText = "padding:10px 16px;border-radius:9px;border:1px solid #a64c5d;background:#8c3043;color:#fff;";
+
+    actions.append(cancel, confirm);
+    dialog.append(title, message, actions);
+    overlay.appendChild(dialog);
+
+    let finished = false;
+    const finish = value => {
+      if (finished) return;
+      finished = true;
+      document.removeEventListener("keydown", onKey);
+      overlay.remove();
+      resolve(value);
+    };
+    const onKey = event => {
+      if (event.key === "Escape") finish(false);
+    };
+
+    cancel.addEventListener("click", () => finish(false));
+    confirm.addEventListener("click", () => finish(true));
+    overlay.addEventListener("click", event => {
+      if (event.target === overlay) finish(false);
+    });
+    document.addEventListener("keydown", onKey);
+
+    document.body.appendChild(overlay);
+    cancel.focus();
+  });
+}
+
 async function deleteSavedDraft(id) {
   const draft = drafts.find(item => draftStorageId(item) === id);
   if (!draft) return;
-  if (!window.confirm("Delete this saved draft? This cannot be undone.")) return;
+  if (!(await confirmDraftDeletion())) return;
 
+  const previousDrafts = drafts.slice();
+  const previousCurrent = current;
   const removedCurrentDraft = current === draft.content;
+
   drafts = drafts.filter(item => draftStorageId(item) !== id);
-  renderSavedDrafts();
 
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(drafts));
@@ -223,6 +414,24 @@ async function deleteSavedDraft(id) {
     }
   } catch (e) {
     console.warn("Could not update browser draft storage:", e);
+    drafts = previousDrafts;
+    current = previousCurrent;
+
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(previousDrafts));
+      if (removedCurrentDraft) {
+        localStorage.setItem(LAST_DRAFT_KEY, previousCurrent);
+      }
+    } catch (restoreError) {
+      console.warn("Could not restore browser draft storage:", restoreError);
+    }
+
+    if (removedCurrentDraft) {
+      el("output").textContent = previousCurrent;
+    }
+    renderSavedDrafts();
+    el("status").textContent = "Browser storage failed. Your draft was not deleted.";
+    return;
   }
 
   if (host) {
@@ -233,10 +442,29 @@ async function deleteSavedDraft(id) {
       }
     } catch (e) {
       console.warn("Could not synchronize deleted draft with Anna storage:", e);
-      el("status").textContent = "Draft removed here, but Anna storage could not be synchronized.";
+      drafts = previousDrafts;
+      current = previousCurrent;
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(previousDrafts));
+        if (removedCurrentDraft) localStorage.setItem(LAST_DRAFT_KEY, previousCurrent);
+      } catch (restoreError) {
+        console.warn("Could not restore browser draft storage:", restoreError);
+      }
+      try {
+        await host.storage.set({key: HISTORY_KEY, value: previousDrafts});
+        if (removedCurrentDraft) {
+          await host.storage.set({key: LAST_DRAFT_KEY, value: previousCurrent});
+        }
+      } catch (restoreError) {
+        console.warn("Could not restore Anna draft storage:", restoreError);
+      }
+      renderSavedDrafts();
+      el("status").textContent = "Deletion could not be synchronized. Your draft has been restored.";
       return;
     }
   }
+
+  renderSavedDrafts();
   el("status").textContent = "Saved draft deleted.";
 }
 

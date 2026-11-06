@@ -1,7 +1,7 @@
 {
   "name": "Pocket Creator AI",
   "tagline": "Turn ideas into content worth sharing",
-  "description": "Pocket Creator AI is an AI-powered content studio for creators, small businesses, entrepreneurs and social media managers. Generate original video scripts, stories, social posts, product promotions, captions and structured ebooks from your topic using Anna's language model through its bundled Creator AI tool. Choose a content format and tone, tailor video scripts by platform and duration, set a target audience, choose ebook length, add optional business details, create variations, and save or reopen drafts. If AI generation fails, the app reports the error instead of substituting a template. Review factual claims before publishing.",
+  "description": "Pocket Creator AI is an AI-powered content studio for creators, small businesses, entrepreneurs and social media managers. Generate original video scripts, stories, social posts, product promotions, captions and structured ebooks using Anna's language model through its bundled Creator AI tool. Choose a content format and tone, tailor video scripts by platform and duration, set a target audience, choose ebook length, add optional business details, and create variations. Save, reopen and delete drafts, or download current and saved drafts as PDFs. Every exported PDF includes Pocket Creator AI branding on every page and a one-line creator footer with the creator's name, GitHub, YouTube and WhatsApp details. If AI generation fails, the app reports the error instead of substituting a template. Review factual claims before publishing.",
   "category": "productivity",
   "slug": "pocket-creator-ai",
   "bundled_executas": {

@@ -244,6 +244,30 @@ def generate(args):
         "A variation changes the creative angle, not the underlying facts."
     )
 
+    video_hashtag_rules = {
+        "tiktok": (
+            "Use 3–5 relevant hashtags. Combine specific topic or niche hashtags "
+            "with a small number of suitable discovery hashtags. Avoid generic "
+            "viral tags unless they genuinely fit the content."
+        ),
+        "youtube": (
+            "Use 3–5 relevant hashtags based on the video's subject. Include "
+            "#Shorts only when the script is intended for YouTube Shorts; do not "
+            "add it to a regular long-form YouTube video."
+        ),
+        "instagram": (
+            "Use 5–8 relevant hashtags, balancing specific niche tags with "
+            "topic and audience discovery tags. Use #Reels when appropriate."
+        ),
+        "facebook": (
+            "Use 3–5 relevant hashtags focused on the topic and intended audience. "
+            "Use #FacebookReels only when the video is intended as a Facebook Reel."
+        ),
+        "general": (
+            "Use 3–5 relevant hashtags that describe the actual topic and audience."
+        )
+    }.get(platform, "Use 3–5 relevant hashtags suited to the topic and platform.")
+
     if kind == "video":
         format_instructions = (
             "Create a record-ready video script for the selected platform. "
@@ -252,7 +276,11 @@ def generate(args):
             "spoken narration or dialogue, on-screen text, transitions where useful, "
             "a natural closing and a platform-appropriate call to action. "
             "Keep the spoken script realistic for the requested duration. "
-            "Do not pad it with unnecessary repetition."
+            "Do not pad it with unnecessary repetition. "
+            "At the very end, add a separate section labelled 'Hashtags:' containing "
+            "hashtags derived from the actual video topic and target audience. "
+            + video_hashtag_rules + " "
+            "Do not put hashtags inside spoken narration or invent trending claims."
         )
         max_tokens = 2600
 
@@ -355,8 +383,11 @@ def generate(args):
         "4. For ebooks, retain the title, contents, introduction, developed chapters, "
         "conclusion and takeaways. Do not reduce the manuscript to a brief outline.\n"
         "5. For video scripts, preserve the platform, timing, scenes and recording directions.\n"
-        "6. Keep the language natural, clear and appropriate for the audience.\n"
-        "7. Return one revised draft only, without discussing the review process."
+        "6. For video scripts, retain a separate final 'Hashtags:' section. Keep the "
+        "hashtags relevant to the topic, audience and selected platform. "
+        + (video_hashtag_rules if kind == "video" else "") + "\n"
+        "7. Keep the language natural, clear and appropriate for the audience.\n"
+        "8. Return one revised draft only, without discussing the review process."
     )
 
     content = ask_anna(review_prompt, max_tokens=max_tokens)
