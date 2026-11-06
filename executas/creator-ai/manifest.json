@@ -1,7 +1,7 @@
 {
   "name": "tool-chiboygodwinpascal-creator-ai-b6kws47a",
   "display_name": "Pocket Creator AI",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Create video scripts, stories, social posts, promotions, captions and structured ebooks using Anna's language model.",
   "host_capabilities": [
     "llm.sample"
