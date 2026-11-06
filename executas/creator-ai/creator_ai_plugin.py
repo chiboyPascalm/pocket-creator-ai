@@ -17,7 +17,7 @@ def wire_log(message):
 MANIFEST = {
     "name": "tool-chiboygodwinpascal-creator-ai-b6kws47a",
     "display_name": "Pocket Creator AI",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "description": "Create video scripts, stories, social posts, promotions, captions and structured ebooks using Anna's language model.",
     "host_capabilities": ["llm.sample"],
     "credentials": [],
@@ -152,15 +152,15 @@ def enforce_hashtag_section(content, kind, platform, topic, audience, business):
     ))
 
     existing = []
-    if headings:
-        existing = normalize_hashtags(content[headings[-1].end():], maximum)
+    first_heading = headings[0] if headings else None
+    last_heading = headings[-1] if headings else None
+
+    if last_heading:
+        existing = normalize_hashtags(content[last_heading.end():], maximum)
 
     if minimum <= len(existing) <= maximum:
-        return (
-            content[:headings[-1].start()].rstrip()
-            + "\n\nHashtags:\n"
-            + " ".join(existing)
-        )
+        base = content[:first_heading.start()].rstrip()
+        return base + "\n\nHashtags:\n" + " ".join(existing)
 
     count_rule = (
         f"Return exactly {minimum} to {maximum} unique hashtags."
@@ -189,7 +189,7 @@ def enforce_hashtag_section(content, kind, platform, topic, audience, business):
             "Please try generating again."
         )
 
-    base = content[:headings[-1].start()].rstrip() if headings else content.rstrip()
+    base = content[:headings[0].start()].rstrip() if headings else content.rstrip()
     return base + "\n\nHashtags:\n" + " ".join(repaired)
 
 
