@@ -1,0 +1,57 @@
+POCKET CREATOR AI
+AUTHORSHIP AND DEVELOPMENT DECLARATION
+DRAFT — FOR REVIEW BEFORE SUBMISSION
+
+Work title:
+Pocket Creator AI
+
+Applicant / claimed author:
+Chiboy Godwin Pascal
+
+Work category:
+Literary — Computer Program
+
+Development and authorship statement:
+
+Pocket Creator AI is a software project developed by
+Chiboy Godwin Pascal.
+
+The project was developed with the assistance of AI tools,
+including ChatGPT, and software development tools.
+
+The development process involved human direction and
+decision-making concerning the product's purpose, features,
+design requirements, implementation choices, integration,
+testing and project revisions.
+
+AI assistance was used during parts of the development
+process. This declaration does not claim that AI-generated
+material, by itself, establishes human authorship or copyright
+ownership.
+
+Human co-authors or contributors:
+To be confirmed before submission. Any person who made a
+copyrightable contribution must be accurately disclosed.
+
+Third-party materials:
+Third-party libraries, frameworks, dependencies and assets
+remain subject to their respective licences and ownership
+terms.
+
+Ownership claim:
+Chiboy Godwin Pascal claims ownership of the original
+copyrightable contributions to the project, subject to
+applicable law and any third-party rights.
+
+Supporting evidence:
+1. Source-code evidence archive.
+2. Source manifest and SHA-256 checksum.
+3. Project description.
+4. Git repository and commit history.
+5. Relevant development and release records.
+
+Declaration status:
+Draft only. Not signed, submitted or registered.
+
+The final declaration must be reviewed for accuracy before
+it is submitted to the Nigerian Copyright Commission.

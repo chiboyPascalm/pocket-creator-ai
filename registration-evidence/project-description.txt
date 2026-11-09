@@ -1,0 +1,39 @@
+WORK TITLE: Pocket Creator AI
+
+WORK CATEGORY: Computer Program / Software
+
+AUTHOR / CLAIMED COPYRIGHT OWNER:
+Chiboy Godwin Pascal
+
+PROJECT DESCRIPTION:
+Pocket Creator AI is an offline-first content drafting studio
+designed for digital creators.
+
+The software provides tools for drafting video scripts, stories,
+social media posts, product promotions, captions and structured
+ebooks. Features include writing tones, content templates,
+topic-aware hashtags, draft management, PDF downloads and
+branded PDF exports.
+
+The project includes a user interface and a bundled Creator AI
+software tool.
+
+SOURCE REPOSITORY:
+https://github.com/chiboyPascalm/pocket-creator-ai
+
+RELEASE:
+Creator AI Executa v0.1.4
+
+RELEASE DATE:
+2026-11-06
+
+COPYRIGHT NOTICE:
+Copyright (c) 2026 Chiboy Godwin Pascal.
+All rights reserved.
+
+REGISTRATION STATUS:
+Preparation only. Not yet submitted or registered.
+
+THIRD-PARTY MATERIALS:
+Third-party libraries, frameworks, assets and dependencies
+remain subject to their respective licences.

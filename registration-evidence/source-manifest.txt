@@ -1,0 +1,20 @@
+POCKET CREATOR AI — SOURCE EVIDENCE
+Git commit: bd77cf106717a05ed363beaa9337e17918917685
+Git branch: main
+Archive contents:
+LICENSE
+README.md
+bundle/
+bundle/anna-tool-ids.js
+bundle/app.js
+bundle/assets/
+bundle/assets/pocket-creator-ai-logo.svg
+bundle/index.html
+executas/
+executas/creator-ai/
+executas/creator-ai/creator_ai_plugin.py
+executas/creator-ai/executa.json
+executas/creator-ai/manifest.json
+executas/creator-ai/package_binary.py
+executas/creator-ai/pyproject.toml
+executas/creator-ai/uv.lock
