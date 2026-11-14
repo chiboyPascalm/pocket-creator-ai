@@ -8,5 +8,6 @@
     "creator-ai": {
       "path": "executas/creator-ai"
     }
-  }
+  },
+  "version": "0.2.3"
 }

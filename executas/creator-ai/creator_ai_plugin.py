@@ -140,9 +140,90 @@ def normalize_hashtags(value, maximum=8):
     return result
 
 
+
+def safe_topic_hashtags(topic, minimum=3, maximum=5):
+    """Build neutral hashtags only from the words explicitly present in the topic."""
+    words = re.findall(r"[^\W_]+", str(topic or ""), flags=re.UNICODE)
+    if not words:
+        words = ["Topic"]
+
+    def hashtag(parts):
+        value = "".join(parts)
+        value = re.sub(r"[^\w]", "", value, flags=re.UNICODE)
+        return "#" + value if value else ""
+
+    # Normalize each word's initial to produce readable combined tags
+    # while preserving the words and meaning supplied in the topic.
+    title_words = [word[:1].upper() + word[1:] for word in words]
+    candidates = [
+        hashtag(title_words),
+        *[hashtag([word]) for word in title_words],
+        hashtag(["About", *title_words]),
+        hashtag([*title_words, "Info"]),
+        hashtag([*title_words, "Details"]),
+        hashtag([*title_words, "Topic"]),
+        hashtag(["More", "About", *title_words]),
+    ]
+
+    result = []
+    seen = set()
+    for tag in candidates:
+        if not tag or tag == "#":
+            continue
+        key = tag.casefold()
+        if key not in seen:
+            seen.add(key)
+            result.append(tag)
+        if len(result) >= maximum:
+            break
+
+    # These are neutral editorial labels, not claims about the product.
+    neutral_fallbacks = ["#Topic", "#Information", "#Details", "#Explore"]
+    for tag in neutral_fallbacks:
+        if len(result) >= minimum:
+            break
+        if tag.casefold() not in seen:
+            seen.add(tag.casefold())
+            result.append(tag)
+
+    return result[:maximum]
+
+
+def build_safe_promo(topic, business):
+    """Construct promo copy without asking a model to invent product claims."""
+    clean_topic = str(topic or "").strip()
+    clean_business = str(business or "").strip()
+
+    if not clean_topic:
+        raise ValueError("A promotional topic is required.")
+
+    heading = "**" + clean_topic + "**"
+    if clean_business:
+        return heading + "\n\n" + clean_business
+
+    return (
+        heading
+        + "\n\n"
+        + "[Add verified product or business details here before using this promotion.]"
+    )
+
 def enforce_hashtag_section(content, kind, platform, topic, audience, business):
     """Ensure video and promotional drafts end with a valid platform-specific section."""
-    if kind not in {"video", "promo"}:
+    if kind == "promo":
+        minimum, maximum = HASHTAG_POLICIES.get(
+            platform, HASHTAG_POLICIES["general"]
+        )
+        tags = safe_topic_hashtags(topic, minimum, maximum)
+        # Remove any pre-existing model-supplied hashtag section before
+        # appending the deterministic, topic-derived hashtags.
+        base = re.split(
+            r"(?im)^[ \\t]*hashtags?[ \\t]*:?[ \\t]*$",
+            content,
+            maxsplit=1,
+        )[0].rstrip()
+        return base + "\n\nHashtags:\n" + " ".join(tags)
+
+    if kind != "video":
         return content
 
     minimum, maximum = HASHTAG_POLICIES.get(platform, HASHTAG_POLICIES["general"])
@@ -176,10 +257,13 @@ def enforce_hashtag_section(content, kind, platform, topic, audience, business):
         f"SUPPLIED BUSINESS OR PRODUCT DETAILS: {business or 'Not provided'}\n"
         f"PLATFORM: {platform}\n"
         f"{count_rule}\n"
-        "Use specific, accurate hashtags based on the actual topic, product or "
-        "service and audience. Do not claim that any hashtag is trending. "
-        "Do not add #Shorts, #Reels or #FacebookReels unless that exact format "
-        "was explicitly requested. Do not invent a product, service or audience."
+        "Use neutral hashtags based on words and categories explicitly supported "
+        "by the topic, supplied product or service details and audience. A topic "
+        "does not prove product properties or benefits. Never imply unverified "
+        "ingredients, materials, quality, certifications, performance, outcomes, "
+        "popularity or customer results in a hashtag. Do not claim that any hashtag "
+        "is trending. Do not add #Shorts, #Reels or #FacebookReels unless that exact "
+        "format was explicitly requested. Do not invent a product, service or audience."
     )
 
     repaired = normalize_hashtags(ask_anna(repair_prompt, max_tokens=220), maximum)
@@ -300,7 +384,7 @@ def generate(args):
         "Use a practical, direct approach with a strong opening.",
         "Use a relatable mini-story or everyday situation.",
         "Lead with a surprising insight or common mistake.",
-        "Use a concise, benefit-focused approach.",
+        "Use a concise, fact-neutral approach focused on the supplied topic and verified details.",
         "Use a warm, community-focused approach."
     ]
     approach = approaches[variation % len(approaches)]
@@ -310,16 +394,23 @@ def generate(args):
 
     rules = (
         "Write useful, original, polished content that matches the requested format. "
-        "Treat the topic and supplied business details as the only source of factual "
-        "information about the user's business, product, services, experience or results. "
-        "Never invent prices, discounts, guarantees, delivery areas, reviews, qualifications, "
-        "availability, facilities, staff, product ranges or business processes. "
-        "If a detail was not supplied, omit it or clearly identify it as something the "
-        "user should fill in. Do not present invented statistics, quotations or sources "
-        "as real. Use natural English and Nigerian context only when relevant. "
+        "FACTUAL SOURCE LIMIT: Use only facts explicitly supplied in the topic, "
+        "business details and audience fields. The topic is a subject, not proof that "
+        "a product or service has any particular feature, ingredient, material, "
+        "performance, result, qualification, certification, price or benefit. "
+        "Do not infer or invent product features, service capabilities, customer "
+        "outcomes, suitability, popularity, quality, availability, guarantees, "
+        "discounts, delivery areas, reviews, facilities, staff, product ranges or "
+        "business processes. Do not turn a possible benefit into a factual promise. "
+        "Do not claim that a product solves a problem unless that claim is explicitly "
+        "supported by supplied details. If information is missing, omit the claim "
+        "or use a clearly labelled placeholder for the user to complete. "
+        "Keep persuasive language focused on the supplied subject and verified facts. "
+        "Do not present invented statistics, quotations, testimonials or sources as real. "
+        "Use natural English and Nigerian context only when relevant. "
         "Avoid generic filler and repetitive openings. "
         "Return one finished draft, not multiple alternative drafts. "
-        "A variation changes the creative angle, not the underlying facts."
+        "A variation changes the creative angle, never the underlying facts."
     )
 
     video_hashtag_rules = {
@@ -406,10 +497,17 @@ def generate(args):
     elif kind == "promo":
         format_instructions = (
             "Write persuasive but honest promotional copy for the selected platform. "
-            "PLATFORM: " + platform + ". Explain only supported benefits and finish "
-            "with a natural call to action. At the very end, add a separate section "
-            "labelled 'Hashtags:' containing platform-appropriate hashtags based on "
-            "the actual product, service, topic and target audience. "
+            "PLATFORM: " + platform + ". Use only product and business facts explicitly "
+            "present in the supplied details. Do not assume what the product does, "
+            "who it benefits, what problem it solves, how it performs or what results "
+            "customers will get. If no factual product description was supplied, "
+            "write neutral introductory copy around the supplied topic and invite "
+            "the audience to request more information. Do not invent benefits or "
+            "make performance, quality, safety, health, financial or other outcome "
+            "promises. Finish with a natural, non-pressuring call to action. "
+            "At the very end, add a separate section labelled 'Hashtags:' containing "
+            "neutral, topic-relevant hashtags. Hashtags must not imply unverified "
+            "product properties, certifications, results or popularity. "
             + video_hashtag_rules + " "
             "Do not put hashtags inside the promotional copy or invent trending claims. "
             "Do not add video-format tags such as #Shorts, #Reels or #FacebookReels "
@@ -445,7 +543,10 @@ def generate(args):
         "Return only the finished content, without explaining your process."
     )
 
-    content = ask_anna(prompt, max_tokens=max_tokens)
+    if kind == "promo":
+        content = build_safe_promo(topic, business)
+    else:
+        content = ask_anna(prompt, max_tokens=max_tokens)
 
     review_prompt = (
         "You are the factual editor for Pocket Creator AI. Review and improve the "
@@ -476,7 +577,12 @@ def generate(args):
         "8. Return one revised draft only, without discussing the review process."
     )
 
-    content = ask_anna(review_prompt, max_tokens=max_tokens)
+    # A second free-form rewrite can introduce unsupported claims into
+    # promotional copy. Keep the first constrained draft instead.
+    # Other content types retain the existing editorial review.
+    if kind != "promo":
+        content = ask_anna(review_prompt, max_tokens=max_tokens)
+
     if kind in {"video", "promo"}:
         content = enforce_hashtag_section(
             content, kind, platform, topic, audience, business
