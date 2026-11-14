@@ -142,28 +142,55 @@ def normalize_hashtags(value, maximum=8):
 
 
 def safe_topic_hashtags(topic, minimum=3, maximum=5):
-    """Build neutral hashtags only from the words explicitly present in the topic."""
+    """Build relevant, neutral hashtags from the topic and curated categories."""
     words = re.findall(r"[^\W_]+", str(topic or ""), flags=re.UNICODE)
     if not words:
         words = ["Topic"]
 
-    def hashtag(parts):
+    def make_tag(parts):
         value = "".join(parts)
         value = re.sub(r"[^\w]", "", value, flags=re.UNICODE)
         return "#" + value if value else ""
 
-    # Normalize each word's initial to produce readable combined tags
-    # while preserving the words and meaning supplied in the topic.
     title_words = [word[:1].upper() + word[1:] for word in words]
-    candidates = [
-        hashtag(title_words),
-        *[hashtag([word]) for word in title_words],
-        hashtag(["About", *title_words]),
-        hashtag([*title_words, "Info"]),
-        hashtag([*title_words, "Details"]),
-        hashtag([*title_words, "Topic"]),
-        hashtag(["More", "About", *title_words]),
-    ]
+
+    # Curated category labels describe topic areas, not unverified claims.
+    related_tags = {
+        "handmade": ["#HandmadeCrafts"],
+        "handcrafted": ["#HandmadeCrafts"],
+        "bag": ["#BagStyle", "#Accessories"],
+        "bags": ["#BagStyle", "#Accessories"],
+        "handbag": ["#BagStyle", "#Accessories"],
+        "handbags": ["#BagStyle", "#Accessories"],
+        "mother": ["#Motherhood", "#FamilyLove"],
+        "mom": ["#Motherhood", "#FamilyLove"],
+        "mum": ["#Motherhood", "#FamilyLove"],
+        "father": ["#Fatherhood", "#FamilyLove"],
+        "dad": ["#Fatherhood", "#FamilyLove"],
+        "business": ["#SmallBusiness", "#Entrepreneurship"],
+        "entrepreneurship": ["#SmallBusiness", "#BusinessIdeas"],
+        "food": ["#FoodIdeas", "#FoodLovers"],
+        "recipe": ["#FoodIdeas", "#Cooking"],
+        "recipes": ["#FoodIdeas", "#Cooking"],
+        "fitness": ["#FitnessJourney", "#HealthyLifestyle"],
+        "workout": ["#FitnessJourney", "#Exercise"],
+        "travel": ["#TravelIdeas", "#TravelCommunity"],
+        "beauty": ["#BeautyTips", "#BeautyCommunity"],
+        "fashion": ["#FashionStyle", "#StyleInspiration"],
+        "education": ["#Learning", "#Education"],
+        "learning": ["#Learning", "#Education"],
+        "technology": ["#TechTopics", "#Technology"],
+        "motivation": ["#Motivation", "#PersonalGrowth"],
+        "leadership": ["#LeadershipSkills", "#LeadershipDevelopment"],
+        "story": ["#Storytelling", "#CreativeWriting"],
+        "stories": ["#Storytelling", "#CreativeWriting"],
+    }
+
+    candidates = [make_tag(title_words)]
+    candidates.extend(make_tag([word]) for word in title_words)
+
+    for word in words:
+        candidates.extend(related_tags.get(word.casefold(), []))
 
     result = []
     seen = set()
@@ -177,10 +204,14 @@ def safe_topic_hashtags(topic, minimum=3, maximum=5):
         if len(result) >= maximum:
             break
 
-    # These are neutral editorial labels, not claims about the product.
-    neutral_fallbacks = ["#Topic", "#Information", "#Details", "#Explore"]
-    for tag in neutral_fallbacks:
-        if len(result) >= minimum:
+    fallback_tags = [
+        "#ContentCreator",
+        "#PocketCreatorAI",
+        "#ContentIdeas",
+        "#SocialMediaContent",
+    ]
+    for tag in fallback_tags:
+        if len(result) >= minimum or len(result) >= maximum:
             break
         if tag.casefold() not in seen:
             seen.add(tag.casefold())
@@ -319,6 +350,54 @@ def ask_anna(prompt, max_tokens=1200):
         if answer:
             return answer
         raise RuntimeError("Anna returned an empty response")
+
+
+def safe_promo_hook(hook, topic):
+    """Accept only a short, topic-bound question with neutral wording."""
+    hook = str(hook or "").strip()
+    clean_topic = str(topic or "").strip()
+
+    allowed_words = {
+        "curious", "about", "looking", "for", "interested", "in",
+        "want", "to", "know", "more", "explore", "learn", "discover",
+        "what", "why", "how", "are", "you", "think", "consider"
+    }
+
+    valid = (
+        bool(clean_topic)
+        and bool(hook)
+        and len(hook) <= 120
+        and "\n" not in hook
+        and hook.endswith("?")
+        and clean_topic.casefold() in hook.casefold()
+    )
+
+    words = re.findall(r"[a-z0-9']+", hook.casefold())
+    topic_words = set(re.findall(r"[a-z0-9']+", clean_topic.casefold()))
+
+    if not words or not topic_words or not set(words).issubset(topic_words | allowed_words):
+        valid = False
+
+    if valid:
+        return hook
+
+    return "Curious about " + clean_topic + "?"
+
+
+def build_promo_copy(hook, business):
+    """Assemble promotional copy without rewriting supplied business facts."""
+    parts = ["**" + str(hook).strip() + "**"]
+    clean_business = str(business or "").strip()
+
+    if clean_business:
+        parts.append(clean_business)
+    else:
+        parts.append(
+            "[Add verified product or business details here before publishing.]"
+        )
+
+    parts.append("Want to know more? Request additional information.")
+    return "\n\n".join(parts)
 
 
 def generate(args):
@@ -544,43 +623,56 @@ def generate(args):
     )
 
     if kind == "promo":
-        content = build_safe_promo(topic, business)
+        # Anna generates only a non-assertive hook. The application validates
+        # it and assembles the rest from the user's exact supplied business text.
+        promo_prompt = (
+            "You are Pocket Creator AI. Write exactly ONE short promotional "
+            "question-style hook containing the exact topic phrase below. "
+            "Do not write a product description, factual statement, benefit, "
+            "claim, promise, feature, call to action, hashtag or explanation. "
+            "Use only neutral framing words such as Curious about, Looking for, "
+            "or Interested in. The entire response must be one question ending "
+            "with a question mark. Do not add any words that describe or praise "
+            "the product or business.\n"
+            "TOPIC: " + topic + "\n"
+            "TONE: " + tone + "\n"
+            "CREATIVE DIRECTION: " + approach + "\n"
+            "Return only the single question."
+        )
+        generated_hook = ask_anna(promo_prompt, max_tokens=100)
+        hook = safe_promo_hook(generated_hook, topic)
+        content = build_promo_copy(hook, business)
+
     else:
         content = ask_anna(prompt, max_tokens=max_tokens)
 
-    review_prompt = (
-        "You are the factual editor for Pocket Creator AI. Review and improve the "
-        "following draft while preserving its intended format and useful detail.\n\n"
-        "CONTENT TYPE: " + kind + "\n"
-        "TOPIC: " + topic + "\n"
-        "TARGET AUDIENCE: " + audience_text + "\n"
-        "REQUESTED TONE: " + tone + "\n"
-        "COMEDY REQUIREMENTS: If the requested tone is funny, preserve genuinely "
-        "amusing, polished humour, clever punchlines and natural comedic timing. "
-        "Do not remove the humour merely to make the writing formal. However, never "
-        "retain or introduce an unsupported factual detail for the sake of a joke.\n"
-        "ONLY SUPPLIED BUSINESS DETAILS: " + business_text + "\n\n"
-        "DRAFT TO REVIEW:\n" + content + "\n\n"
-        "STRICT RULES:\n"
-        "1. Remove unsupported factual claims and fabricated statistics or sources.\n"
-        "2. Do not invent business details, personal experiences, qualifications, "
-        "prices, offers, reviews or guarantees.\n"
-        "3. Preserve the requested structure and all useful supported information.\n"
-        "4. For ebooks, retain the title, contents, introduction, developed chapters, "
-        "conclusion and takeaways. Do not reduce the manuscript to a brief outline.\n"
-        "5. For video scripts, preserve the platform, timing, scenes and recording directions.\n"
-        "6. For video scripts and promotions, retain a separate final "
-        "'Hashtags:' section. Keep hashtags relevant to the topic, audience "
-        "and selected platform. "
-        + (video_hashtag_rules if kind in {"video", "promo"} else "") + "\n"
-        "7. Keep the language natural, clear and appropriate for the audience.\n"
-        "8. Return one revised draft only, without discussing the review process."
-    )
-
-    # A second free-form rewrite can introduce unsupported claims into
-    # promotional copy. Keep the first constrained draft instead.
-    # Other content types retain the existing editorial review.
-    if kind != "promo":
+        review_prompt = (
+            "You are the factual editor for Pocket Creator AI. Review and improve "
+            "the following draft while preserving its intended format and useful detail.\n\n"
+            "CONTENT TYPE: " + kind + "\n"
+            "TOPIC: " + topic + "\n"
+            "TARGET AUDIENCE: " + audience_text + "\n"
+            "REQUESTED TONE: " + tone + "\n"
+            "COMEDY REQUIREMENTS: If the requested tone is funny, preserve genuinely "
+            "amusing, polished humour, clever punchlines and natural comedic timing. "
+            "Do not remove the humour merely to make the writing formal. However, never "
+            "retain or introduce an unsupported factual detail for the sake of a joke.\n"
+            "ONLY SUPPLIED BUSINESS DETAILS: " + business_text + "\n\n"
+            "DRAFT TO REVIEW:\n" + content + "\n\n"
+            "STRICT RULES:\n"
+            "1. Remove unsupported factual claims and fabricated statistics or sources.\n"
+            "2. Do not invent business details, personal experiences, qualifications, "
+            "prices, offers, reviews or guarantees.\n"
+            "3. Preserve the requested structure and all useful supported information.\n"
+            "4. For ebooks, retain the title, contents, introduction, developed chapters, "
+            "conclusion and takeaways. Do not reduce the manuscript to a brief outline.\n"
+            "5. For video scripts, preserve the platform, timing, scenes and recording directions.\n"
+            "6. For video scripts, retain a separate final 'Hashtags:' section. "
+            "Keep hashtags relevant to the topic, audience and selected platform. "
+            + (video_hashtag_rules if kind == "video" else "") + "\n"
+            "7. Keep the language natural, clear and appropriate for the audience.\n"
+            "8. Return one revised draft only, without discussing the review process."
+        )
         content = ask_anna(review_prompt, max_tokens=max_tokens)
 
     if kind in {"video", "promo"}:

@@ -10,65 +10,104 @@ import creator_ai_plugin as plugin
 
 
 class PromoFactualGuardTests(unittest.TestCase):
-    def test_promo_uses_deterministic_copy_without_calling_model(self):
-        with patch.object(plugin, "ask_anna") as anna:
+    def test_valid_ai_hook_is_used(self):
+        self.assertEqual(
+            plugin.safe_promo_hook(
+                "Curious about handmade bags?", "Handmade bags"
+            ),
+            "Curious about handmade bags?",
+        )
+
+    def test_unsupported_claim_in_hook_is_replaced(self):
+        self.assertEqual(
+            plugin.safe_promo_hook(
+                "Discover premium handmade bags that last longer?",
+                "Handmade bags",
+            ),
+            "Curious about Handmade bags?",
+        )
+
+    def test_hook_without_topic_is_replaced(self):
+        self.assertEqual(
+            plugin.safe_promo_hook(
+                "Curious about stylish accessories?", "Handmade bags"
+            ),
+            "Curious about Handmade bags?",
+        )
+
+    def test_multiline_hook_is_replaced(self):
+        self.assertEqual(
+            plugin.safe_promo_hook(
+                "Curious about handmade bags?\nThey are beautiful.",
+                "Handmade bags",
+            ),
+            "Curious about Handmade bags?",
+        )
+
+    def test_business_details_are_inserted_verbatim(self):
+        business = (
+            "We make handmade bags in different colours and sizes. "
+            "Orders are accepted through WhatsApp."
+        )
+        with patch.object(
+            plugin, "ask_anna", return_value="Curious about handmade bags?"
+        ) as anna:
             result = plugin.generate({
                 "topic": "Handmade bags",
                 "kind": "promo",
                 "tone": "persuasive",
-                "business": "",
-                "platform": "general",
+                "business": business,
+                "platform": "instagram",
+                "audience": "People interested in handmade bags",
             })
 
-        self.assertTrue(result["success"])
         content = result["data"]["content"]
-        self.assertIn("**Handmade bags**", content)
-        self.assertIn("[Add verified product or business details here", content)
-        self.assertIn("Hashtags:", content)
-        anna.assert_not_called()
+        self.assertIn("**Curious about handmade bags?**", content)
+        self.assertIn(business, content)
+        self.assertIn("Want to know more? Request additional information.", content)
+        self.assertEqual(content.count(business), 1)
+        self.assertEqual(anna.call_count, 1)
+        self.assertEqual(result["data"]["provider"], "anna-llm")
 
-    def test_unsupported_promotional_claims_cannot_enter_from_model(self):
-        unsafe_model_output = (
-            "Durable bags with reinforced stitching and premium materials. "
-            "#QualityCraftsmanship #BuiltToLast #HandmadeBags"
-        )
-
+    def test_missing_business_details_get_placeholder(self):
         with patch.object(
-            plugin, "ask_anna", return_value=unsafe_model_output
+            plugin, "ask_anna", return_value="Curious about handmade bags?"
         ) as anna:
             result = plugin.generate({
                 "topic": "Handmade bags",
                 "kind": "promo",
                 "business": "",
-                "platform": "general",
             })
 
         content = result["data"]["content"]
-        self.assertNotIn("Durable bags", content)
-        self.assertNotIn("reinforced stitching", content)
-        self.assertNotIn("premium materials", content)
-        self.assertNotIn("#QualityCraftsmanship", content)
-        self.assertNotIn("#BuiltToLast", content)
-        anna.assert_not_called()
+        self.assertIn("Curious about handmade bags?", content)
+        self.assertIn(
+            "[Add verified product or business details here before publishing.]",
+            content,
+        )
+        self.assertEqual(anna.call_count, 1)
 
-    def test_supplied_business_details_are_preserved_verbatim(self):
-        details = "Available in black and brown. Price: ₦12,000."
-        with patch.object(plugin, "ask_anna") as anna:
-            result = plugin.generate({
+    def test_promo_prompt_requests_only_neutral_question(self):
+        with patch.object(
+            plugin, "ask_anna", return_value="Curious about handmade bags?"
+        ) as anna:
+            plugin.generate({
                 "topic": "Handmade bags",
                 "kind": "promo",
-                "business": details,
-                "platform": "general",
+                "business": "Available in black and brown.",
+                "audience": "People interested in bags",
             })
 
-        content = result["data"]["content"]
-        self.assertIn(details, content)
-        self.assertNotIn("[Add verified product", content)
-        anna.assert_not_called()
+        prompt = anna.call_args.args[0]
+        self.assertIn("question-style hook", prompt)
+        self.assertIn("Handmade bags", prompt)
+        self.assertNotIn("Available in black and brown.", prompt)
+        self.assertNotIn("People interested in bags", prompt)
+        anna.assert_called_once()
 
-    def test_promo_discards_all_model_hashtags(self):
+    def test_promo_discards_model_supplied_hashtags(self):
         content = (
-            "A draft.\n\nHashtags:\n"
+            "A promotional draft.\n\nHashtags:\n"
             "#Luxury #Premium #GuaranteedResults"
         )
         result = plugin.enforce_hashtag_section(
@@ -90,12 +129,8 @@ class PromoFactualGuardTests(unittest.TestCase):
         for platform, (minimum, maximum) in cases.items():
             with self.subTest(platform=platform):
                 result = plugin.enforce_hashtag_section(
-                    "**Handmade bags**",
-                    "promo",
-                    platform,
-                    "Handmade bags",
-                    "",
-                    "",
+                    "A generated promotional draft.",
+                    "promo", platform, "Handmade bags", "", "",
                 )
                 tags = plugin.normalize_hashtags(
                     result.split("Hashtags:", 1)[1], maximum=maximum
@@ -103,14 +138,31 @@ class PromoFactualGuardTests(unittest.TestCase):
                 self.assertGreaterEqual(len(tags), minimum)
                 self.assertLessEqual(len(tags), maximum)
 
-    def test_topic_hashtags_are_unique_and_topic_derived(self):
+    def test_topic_hashtags_are_relevant_unique_and_topic_derived(self):
         tags = plugin.safe_topic_hashtags("Handmade bags", 5, 8)
         self.assertGreaterEqual(len(tags), 5)
         self.assertLessEqual(len(tags), 8)
         self.assertEqual(len(tags), len({tag.casefold() for tag in tags}))
-        self.assertIn("#HandmadeBags", tags)
-        self.assertIn("#Handmade", tags)
-        self.assertIn("#Bags", tags)
+        self.assertEqual(
+            tags[:5],
+            [
+                "#HandmadeBags",
+                "#Handmade",
+                "#Bags",
+                "#HandmadeCrafts",
+                "#BagStyle",
+            ],
+        )
+        self.assertNotIn("#AboutHandmadeBags", tags)
+        self.assertNotIn("#HandmadeBagsInfo", tags)
+        self.assertNotIn("#HandmadeBagsDetails", tags)
+        self.assertNotIn("#HandmadeBagsTopic", tags)
+
+    def test_unknown_topic_uses_neutral_fallback_only_when_needed(self):
+        tags = plugin.safe_topic_hashtags("Astronomy", 3, 5)
+        self.assertEqual(tags[0], "#Astronomy")
+        self.assertEqual(len(tags), 3)
+        self.assertEqual(len(tags), len({tag.casefold() for tag in tags}))
 
     def test_video_hashtag_repair_keeps_existing_model_path(self):
         with patch.object(
@@ -119,20 +171,15 @@ class PromoFactualGuardTests(unittest.TestCase):
         ) as anna:
             result = plugin.enforce_hashtag_section(
                 "A video script without hashtags.",
-                "video",
-                "general",
-                "Video topic",
-                "",
-                "",
+                "video", "general", "Video topic", "", "",
             )
         self.assertIn("Hashtags:", result)
         anna.assert_called_once()
 
     def test_non_promo_content_keeps_editorial_review(self):
-        first = "A draft about a topic."
-        reviewed = "An edited draft about a topic."
         with patch.object(
-            plugin, "ask_anna", side_effect=[first, reviewed]
+            plugin, "ask_anna",
+            side_effect=["A draft about a topic.", "An edited draft about a topic."],
         ) as anna:
             result = plugin.generate({
                 "topic": "A topic",
@@ -141,7 +188,9 @@ class PromoFactualGuardTests(unittest.TestCase):
             })
 
         self.assertEqual(anna.call_count, 2)
-        self.assertEqual(result["data"]["content"], reviewed)
+        self.assertEqual(
+            result["data"]["content"], "An edited draft about a topic."
+        )
 
 
 if __name__ == "__main__":
