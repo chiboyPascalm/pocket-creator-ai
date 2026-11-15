@@ -164,6 +164,61 @@ class PromoFactualGuardTests(unittest.TestCase):
         self.assertEqual(len(tags), 3)
         self.assertEqual(len(tags), len({tag.casefold() for tag in tags}))
 
+
+    def test_promo_removes_tab_indented_hashtag_heading(self):
+        content = (
+            "A promotional draft.\n\n"
+            "\tHashtags:\n"
+            "#UnsupportedTag"
+        )
+        result = plugin.enforce_hashtag_section(
+            content, "promo", "general", "Handmade bags", "", ""
+        )
+        self.assertNotIn("#UnsupportedTag", result)
+        self.assertEqual(result.count("Hashtags:"), 1)
+        self.assertIn("#HandmadeBags", result)
+
+    def test_video_repairs_hashtag_section_with_extra_prose(self):
+        content = (
+            "A video script.\n\n"
+            "Hashtags:\n"
+            "#VideoTopic #VideoDetails #VideoInfo\n"
+            "These are popular trending hashtags."
+        )
+        with patch.object(
+            plugin,
+            "ask_anna",
+            return_value="#VideoTopic #VideoDetails #VideoInfo",
+        ) as anna:
+            result = plugin.enforce_hashtag_section(
+                content, "video", "general", "Video topic", "", ""
+            )
+
+        anna.assert_called_once()
+        self.assertNotIn("popular trending hashtags", result)
+        self.assertEqual(result.count("Hashtags:"), 1)
+
+    def test_video_repairs_over_limit_hashtag_section(self):
+        content = (
+            "A video script.\n\n"
+            "Hashtags:\n"
+            "#One #Two #Three #Four #Five #Six"
+        )
+        with patch.object(
+            plugin,
+            "ask_anna",
+            return_value="#One #Two #Three",
+        ) as anna:
+            result = plugin.enforce_hashtag_section(
+                content, "video", "general", "Video topic", "", ""
+            )
+
+        anna.assert_called_once()
+        tags = plugin.normalize_hashtags(
+            result.split("Hashtags:", 1)[1]
+        )
+        self.assertEqual(len(tags), 3)
+
     def test_video_hashtag_repair_keeps_existing_model_path(self):
         with patch.object(
             plugin, "ask_anna",

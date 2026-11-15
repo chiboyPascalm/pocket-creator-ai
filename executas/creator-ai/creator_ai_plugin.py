@@ -248,7 +248,7 @@ def enforce_hashtag_section(content, kind, platform, topic, audience, business):
         # Remove any pre-existing model-supplied hashtag section before
         # appending the deterministic, topic-derived hashtags.
         base = re.split(
-            r"(?im)^[ \\t]*hashtags?[ \\t]*:?[ \\t]*$",
+            r"(?im)^[ \t]*hashtags?[ \t]*:?[ \t]*$",
             content,
             maxsplit=1,
         )[0].rstrip()
@@ -267,10 +267,33 @@ def enforce_hashtag_section(content, kind, platform, topic, audience, business):
     first_heading = headings[0] if headings else None
     last_heading = headings[-1] if headings else None
 
-    if last_heading:
-        existing = normalize_hashtags(content[last_heading.end():], maximum)
+    section_is_clean = False
 
-    if minimum <= len(existing) <= maximum:
+    if last_heading:
+        section = content[last_heading.end():]
+        # Read one extra unique tag so over-limit output is detected,
+        # rather than silently truncated and incorrectly accepted.
+        existing = normalize_hashtags(section, maximum + 1)
+
+        # A hashtag section must contain hashtags only, not explanations,
+        # promotional prose, incomplete hashtag tokens or other text.
+        remainder = re.sub(
+            r"(?<!\w)#[\w]+",
+            "",
+            section,
+            flags=re.UNICODE,
+        )
+        remainder = re.sub(
+            r"[\s,|•·*\-–—]+",
+            "",
+            remainder,
+        )
+        section_is_clean = not remainder
+
+    if (
+        minimum <= len(existing) <= maximum
+        and section_is_clean
+    ):
         base = content[:first_heading.start()].rstrip()
         return base + "\n\nHashtags:\n" + " ".join(existing)
 
