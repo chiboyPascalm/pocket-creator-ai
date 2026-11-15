@@ -32,6 +32,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Run factual guard unit tests
+        run: python executas/creator-ai/test_promo_factual_guard.py
+
       - name: Install PyInstaller
         run: python -m pip install --upgrade pip pyinstaller
 
