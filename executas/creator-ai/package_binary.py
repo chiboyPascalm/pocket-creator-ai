@@ -57,38 +57,79 @@ with tempfile.TemporaryDirectory(prefix="creator-ai-build-") as temp:
     if not binary.is_file():
         raise SystemExit(f"PyInstaller did not create {binary}")
 
-    # Smoke-test the packaged program's JSON-RPC describe method.
-    request = json.dumps({
-        "jsonrpc": "2.0", "id": 1,
-        "method": "describe", "params": {}
-    }) + "\n"
+    # Test multiple JSON-RPC requests in one process and clean EOF.
+    requests = [
+        {"jsonrpc": "2.0", "id": 101, "method": "describe", "params": {}},
+        {"jsonrpc": "2.0", "id": 102, "method": "describe", "params": {}},
+        {"jsonrpc": "2.0", "id": 103, "method": "health", "params": {}},
+    ]
+    request_text = "".join(json.dumps(item) + "\n" for item in requests)
     result = subprocess.run(
-        [str(binary)], input=request, text=True,
+        [str(binary)], input=request_text, text=True,
         capture_output=True, timeout=30
     )
-    if result.returncode != 0 or not result.stdout.strip():
+    if result.returncode != 0:
         raise SystemExit(
-            "Packaged executable smoke test failed.\n"
+            "Packaged executable exited unsuccessfully.\n"
             f"Exit: {result.returncode}\n"
             f"stdout: {result.stdout[-2000:]}\n"
             f"stderr: {result.stderr[-2000:]}"
         )
-    try:
-        response = json.loads(result.stdout.strip().splitlines()[-1])
-    except Exception as exc:
+
+    lines = result.stdout.splitlines()
+    if len(lines) != len(requests):
         raise SystemExit(
-            f"describe did not return valid JSON: {result.stdout[-2000:]}"
-        ) from exc
-    if response.get("error"):
-        raise SystemExit(f"describe returned an error: {response['error']}")
-    print("Packaged executable describe test passed.", flush=True)
+            f"Expected 3 response lines, got {len(lines)}: "
+            f"{result.stdout[-2000:]}"
+        )
+
+    responses = []
+    for index, line in enumerate(lines):
+        try:
+            response = json.loads(line)
+        except Exception as exc:
+            raise SystemExit(
+                f"Response {index + 1} is invalid JSON: {line!r}"
+            ) from exc
+
+        if response.get("jsonrpc") != "2.0":
+            raise SystemExit(f"Response {index + 1}: invalid JSON-RPC version.")
+        if response.get("id") != requests[index]["id"]:
+            raise SystemExit(f"Response {index + 1}: request ID mismatch.")
+        if "error" in response or "result" not in response:
+            raise SystemExit(f"Response {index + 1}: invalid RPC result.")
+        responses.append(response["result"])
+
+    for index in (0, 1):
+        manifest = responses[index]
+        if not isinstance(manifest, dict):
+            raise SystemExit("describe did not return a manifest object.")
+        if manifest.get("name") != TOOL_ID:
+            raise SystemExit("describe returned an incorrect tool ID.")
+        if manifest.get("version") != VERSION:
+            raise SystemExit(
+                f"describe version {manifest.get('version')!r} "
+                f"does not match {VERSION!r}."
+            )
+        if not isinstance(manifest.get("tools"), list):
+            raise SystemExit("describe manifest has no tools list.")
+        tool_names = {item.get("name") for item in manifest["tools"]}
+        if not {"generate", "ping"}.issubset(tool_names):
+            raise SystemExit("describe manifest is missing generate or ping.")
+
+    if responses[0] != responses[1]:
+        raise SystemExit("Repeated describe responses differ.")
+    if responses[2] != {"status": "ready"}:
+        raise SystemExit("health returned an unexpected response.")
+
+    print("Packaged executable JSON-RPC lifecycle test passed.", flush=True)
 
     stage = tempdir / "package"
     (stage / "bin").mkdir(parents=True)
     shutil.copy2(binary, stage / entrypoint)
     manifest = {
         "name": TOOL_ID,
-        "display_name": META.get("name", "Pocket Creator AI"),
+        "display_name": json.loads((ROOT / "manifest.json").read_text(encoding="utf-8")).get("display_name", META.get("name", "Pocket Creator AI")),
         "version": VERSION,
         "description": META.get("description", ""),
         "runtime": {
