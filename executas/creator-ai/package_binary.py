@@ -13,6 +13,16 @@ ROOT = Path(__file__).resolve().parent
 META = json.loads((ROOT / "executa.json").read_text(encoding="utf-8"))
 TOOL_ID = META["tool_id"]
 VERSION = META["version"]
+SOURCE_MANIFEST = json.loads(
+    (ROOT / "manifest.json").read_text(encoding="utf-8")
+)
+
+if SOURCE_MANIFEST.get("name") != TOOL_ID:
+    raise SystemExit("Source manifest tool ID does not match executa.json.")
+if SOURCE_MANIFEST.get("version") != VERSION:
+    raise SystemExit("Source manifest version does not match executa.json.")
+if not isinstance(SOURCE_MANIFEST.get("tools"), list):
+    raise SystemExit("Source manifest has no tools list.")
 
 system = platform.system().lower()
 machine = platform.machine().lower()
@@ -119,6 +129,10 @@ with tempfile.TemporaryDirectory(prefix="creator-ai-build-") as temp:
 
     if responses[0] != responses[1]:
         raise SystemExit("Repeated describe responses differ.")
+    if responses[0] != SOURCE_MANIFEST:
+        raise SystemExit(
+            "Packaged executable describe manifest differs from source manifest."
+        )
     if responses[2] != {"status": "ready"}:
         raise SystemExit("health returned an unexpected response.")
 
@@ -127,16 +141,13 @@ with tempfile.TemporaryDirectory(prefix="creator-ai-build-") as temp:
     stage = tempdir / "package"
     (stage / "bin").mkdir(parents=True)
     shutil.copy2(binary, stage / entrypoint)
-    manifest = {
-        "name": TOOL_ID,
-        "display_name": json.loads((ROOT / "manifest.json").read_text(encoding="utf-8")).get("display_name", META.get("name", "Pocket Creator AI")),
-        "version": VERSION,
-        "description": META.get("description", ""),
-        "runtime": {
-            "binary": {
-                "entrypoint": {"default": entrypoint},
-                "permissions": {entrypoint: "0o755"}
-            }
+    # Preserve the complete Executa manifest, including tools and capabilities.
+    # Add only the platform-specific binary runtime metadata.
+    manifest = dict(SOURCE_MANIFEST)
+    manifest["runtime"] = {
+        "binary": {
+            "entrypoint": {"default": entrypoint},
+            "permissions": {entrypoint: "0o755"}
         }
     }
     (stage / "manifest.json").write_text(
